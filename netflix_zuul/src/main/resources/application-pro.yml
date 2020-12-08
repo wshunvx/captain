@@ -1,0 +1,12 @@
+eureka:
+  instance:
+    version: 1.0
+    hostname: 10.10.10.182
+    instanceId: 1000100123000001
+    metadataMap:
+      zone: 1001
+  client:
+    zone: 1001
+    serviceUrl:
+      defaultZone: http://wshunvx:QRVF68VKEV3B830V@127.0.0.1:8761/eureka/
+    preferSameZoneEureka: true

@@ -1,0 +1,73 @@
+server:
+  port: 8765
+
+spring:
+  profiles:
+    active: test
+  application:
+    name: gen-gate
+  cloud:
+    loadbalancer:
+      ribbon:
+        enabled: false
+
+feign:
+  hystrix:
+    enabled: true
+  compression:
+    request:
+      enabled: true
+      mime-types:
+        - text/xml
+        - application/xml
+        - application/json
+      min-request-size: 1024
+    response:
+      enabled:  true
+
+gate:
+  ignore:
+    prefix: /auth/jwt/*
+    
+ribbon:
+  ConnectTimeout: 2000
+  ReadTimeout: 60000
+  MaxAutoRetries: 0
+  MaxAutoRetriesNextServer: 1
+
+zuul:
+  host:
+    maxTotalConnections: 800
+    maxPerRouteConnections: 80
+  ignoredServices: '*'
+  routes:
+    gen-product-route:
+      path: /gen/**
+      serviceId: gen-demo
+      stripPrefix: true
+    aliyun-product-route:
+      path: /aliyun_product/**
+      url: https://www.aliyun.com/product
+      
+hystrix:
+  threadpool:
+    default:
+      coreSize: 10
+      maxQueueSize: 1000
+      queueSizeRejectionThreshold: 800
+  command:
+    default:
+      fallback:
+        isolation:
+          semaphore:
+            maxConcurrentRequests: 40
+      execution:
+        isolation:
+          thread:
+            timeoutInMilliseconds: 124000
+        semaphore:
+          maxConcurrentRequests: 40
+      circuitBreaker:
+        requestVolumeThreshold: 30
+        errorThresholdPercentage: 20
+        sleepWindowInMilliseconds: 12000

@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.genj.captain</groupId>
+    <artifactId>service-parent</artifactId>
+    <version>0.0.1.SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>${project.artifactId}</name>
+    <description>The parent project of captain</description>
+    <url>http://git.genj.com.cn/dev/captain</url>
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <scm>
+        <url>http://git.genj.com.cn/dev/captain/service</url>
+        <connection>scm:git:http://git.genj.com.cn/dev/captain/service.git</connection>
+        <developerConnection>scm:git:http://git.genj.com.cn:dev/captain/service.git</developerConnection>
+    </scm>
+    <developers>
+        <developer>
+            <name>The Captain Project Contributors</name>
+            <email>wangshun@genj.com.cn</email>
+            <url>http://git.genj.com.cn/dev/captain</url>
+        </developer>
+    </developers>
+    <organization>
+        <name>Genj info</name>
+        <url>http://git.genj.com.cn/</url>
+    </organization>
+    <issueManagement>
+        <system>github</system>
+        <url>http://git.genj.com.cn/dev/captain/issues</url>
+    </issueManagement>
+
+    <properties>
+    	<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    	<google.code.gson>2.8.6</google.code.gson>
+    	<!-- Spring cloud -->
+		<spring.boot.version>2.3.5.RELEASE</spring.boot.version>
+		<spring-cloud.version>Hoxton.SR8</spring-cloud.version>
+		
+		<!-- Java -->
+		<java.source.version>1.8</java.source.version>
+        <java.target.version>1.8</java.target.version>
+        <java.encoding>UTF-8</java.encoding>
+        
+        <!-- Test libs -->
+        <junit.version>4.12</junit.version>
+
+        <!-- Build -->
+        <maven.compiler.version>3.8.0</maven.compiler.version>
+        <maven.source.version>3.0.1</maven.source.version>
+        <maven.javadoc.version>3.0.1</maven.javadoc.version>
+        <maven.deploy.version>3.0.0-M1</maven.deploy.version>
+        <maven.pmd.version>3.8</maven.pmd.version>
+        <maven.gpg.version>1.6</maven.gpg.version>
+    </properties>
+
+    <modules>
+    	<module>netflix_common</module>
+        <module>netflix_dashboard</module>
+		<module>netflix_netty_http</module>
+		<module>netflix_zuul_http</module>
+		<module>netflix_auth</module>
+        <module>netflix_server</module>
+		<module>netflix_zuul</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+        	<dependency>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-starter-test</artifactId>
+				<version>${spring.boot.version}</version>
+			</dependency>
+			<dependency>
+		      <groupId>com.fasterxml.jackson.core</groupId>
+		      <artifactId>jackson-core</artifactId>
+		      <version>2.11.1</version>
+		    </dependency>
+		    <dependency>
+		      <groupId>com.fasterxml.jackson.core</groupId>
+		      <artifactId>jackson-databind</artifactId>
+		      <version>2.11.1</version>
+		    </dependency>
+		    <dependency>
+		      <groupId>com.fasterxml.jackson.core</groupId>
+		      <artifactId>jackson-annotations</artifactId>
+		      <version>2.11.1</version>
+		    </dependency>
+			<dependency>
+				<groupId>com.google.code.gson</groupId>
+				<artifactId>gson</artifactId>
+				<version>${google.code.gson}</version>
+		    </dependency>
+            <dependency>
+                <groupId>junit</groupId>
+                <artifactId>junit</artifactId>
+                <version>${junit.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <plugins>
+        	<plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-pmd-plugin</artifactId>
+                <version>${maven.pmd.version}</version>
+                <configuration>
+                    <sourceEncoding>${project.build.sourceEncoding}</sourceEncoding>
+                    <minimumPriority>1</minimumPriority>
+                    <printFailingErrors>true</printFailingErrors>
+                    <rulesets>
+                        <ruleset>rulesets/java/ali-comment.xml</ruleset>
+                        <ruleset>rulesets/java/ali-concurrent.xml</ruleset>
+                        <ruleset>rulesets/java/ali-constant.xml</ruleset>
+                        <ruleset>rulesets/java/ali-exception.xml</ruleset>
+                        <ruleset>rulesets/java/ali-flowcontrol.xml</ruleset>
+                        <ruleset>rulesets/java/ali-naming.xml</ruleset>
+                        <ruleset>rulesets/java/ali-oop.xml</ruleset>
+                        <ruleset>rulesets/java/ali-orm.xml</ruleset>
+                        <ruleset>rulesets/java/ali-other.xml</ruleset>
+                        <ruleset>rulesets/java/ali-set.xml</ruleset>
+                    </rulesets>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.alibaba.p3c</groupId>
+                        <artifactId>p3c-pmd</artifactId>
+                        <version>1.3.6</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven.compiler.version}</version>
+                <configuration>
+                    <source>${java.source.version}</source>
+                    <target>${java.target.version}</target>
+                    <encoding>${java.encoding}</encoding>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>oss</id>
+            <build>
+                <plugins>
+                    <!-- Source -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>${maven.source.version}</version>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- Javadoc -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>${maven.javadoc.version}</version>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                                <configuration>
+                                    <locale>en_US</locale>
+                                    <encoding>UTF-8</encoding>
+                                    <charset>UTF-8</charset>
+                                    <doclint>none</doclint>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- GPG -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>${maven.gpg.version}</version>
+                        <executions>
+                            <execution>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+            <distributionManagement>
+                <snapshotRepository>
+                    <id>oss</id>
+                    <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+                </snapshotRepository>
+                <repository>
+                    <id>oss</id>
+                    <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+                </repository>
+            </distributionManagement>
+        </profile>
+    </profiles>
+
+</project>

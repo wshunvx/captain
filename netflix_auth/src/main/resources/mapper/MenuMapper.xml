@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gen.auth.server.mapper.menu.MenuMapper">
+	<resultMap id="BaseResultMap" type="com.gen.auth.server.entity.menu.Menu">
+        <!--
+          WARNING - @mbggenerated
+        -->
+        <id column="id" jdbcType="CHAR" property="id"/>
+        <result column="code" jdbcType="VARCHAR" property="code"/>
+        <result column="name" jdbcType="VARCHAR" property="name"/>
+        <result column="path" jdbcType="VARCHAR" property="path"/>
+        <result column="source" jdbcType="VARCHAR" property="source"/>
+        <result column="parent_id" jdbcType="VARCHAR" property="parentId"/>
+        <result column="sort" jdbcType="VARCHAR" property="sort"/>
+        <result column="category" jdbcType="INTEGER" property="category"/>
+        <result column="is_open" jdbcType="INTEGER" property="isOpen"/>
+        <result column="remark" jdbcType="VARCHAR" property="remark"/>
+        <result column="del_flag" jdbcType="INTEGER" property="delFlag"/>
+        <result column="create_time" jdbcType="DATE" property="createTime"/>
+        <result column="create_by" jdbcType="VARCHAR" property="createBy"/>
+        <result column="update_by" jdbcType="VARCHAR" property="updateBy"/>
+        <result column="update_time" jdbcType="DATE" property="updateTime"/>
+    </resultMap>
+
+    <select id="role" resultMap="BaseResultMap">
+        SELECT m.* FROM menu m JOIN (SELECT menu_id FROM role_menu WHERE del_flag = 0 and role_id IN
+        <foreach collection="roles" index="index" item="item" open="(" separator="," close=")">
+            #{item.id}
+        </foreach>
+        GROUP BY menu_id) g ON m.id = g.menu_id WHERE m.del_flag = 0 ORDER BY m.sort
+    </select>
+
+    <select id="tree" resultType="com.gen.auth.server.entity.menu.Menu">
+        SELECT id, parent_id, name FROM menu WHERE del_flag = 0
+        <if test="category != null and category.length > 0">
+            AND category IN
+            <foreach collection="category" open="(" separator="," close=")" item="one">
+                #{one}
+            </foreach>
+        </if>
+    </select>
+
+	<select id="permissions" resultType="com.gen.auth.server.entity.menu.Menu">
+		SELECT m.code, m.path FROM menu m JOIN (
+			SELECT m.menu_id FROM role_menu m JOIN user_role r ON m.role_id =r.role_id and r.del_flag = 0 WHERE r.user_id = #{userId} AND m.del_flag = 0 GROUP BY menu_id
+		) g ON m.id = g.menu_id WHERE m.del_flag = 0
+    </select>
+
+	<select id="parents" resultType="com.gen.auth.server.entity.menu.Menu">
+		SELECT p.id, p.parent_id, p.code, p.name, p.path, p.source, p.sort FROM menu p JOIN (
+			SELECT m.parent_id FROM menu m JOIN (SELECT menu_id FROM role_menu WHERE role_id IN
+	        <foreach collection="roles" index="index" item="item" open="(" separator="," close=")">
+	            #{item.id}
+	        </foreach>
+	        ) g ON m.id = g.menu_id WHERE m.category = 2
+		) f ON p.id = f.parent_id GROUP BY p.id
+    </select>
+
+    <select id="buttons" resultType="com.gen.auth.server.entity.menu.Menu">
+        SELECT m.id, m.parent_id, m.code, m.name, m.path, m.source, m.sort FROM menu m JOIN (SELECT menu_id FROM role_menu WHERE role_id in
+        <foreach collection="roles" index="index" item="item" open="(" separator="," close=")">
+            #{item.id}
+        </foreach>) g ON m.id = g.menu_id WHERE m.category = 2
+    </select>
+
+</mapper>

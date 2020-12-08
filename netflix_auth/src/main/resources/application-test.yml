@@ -1,0 +1,20 @@
+spring:
+  datasource:
+    name: test
+    url: jdbc:mysql://127.0.0.1:3306/ag_auth?useUnicode=true&characterEncoding=UTF-8&serverTimezone=GMT
+    username: root
+    password: 2019
+
+eureka:
+  instance:
+    version: 1.0
+    hostname: 10.10.10.104
+    instanceId: 1000100120000001
+    metadataMap:
+      zone: 001
+    appGroupName: auth
+  client:
+    zone: 001
+    serviceUrl:
+      defaultZone: http://wshunvx:QRVF68VKEV3B830V@127.0.0.1:8761/eureka/
+    preferSameZoneEureka: true

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gen.auth.server.mapper.user.UserMapper">
+
+    <select id="getUserByRole" resultType="com.gen.auth.server.entity.user.UserInfo">
+        SELECT u.id, u.name, u.identity, u.login_name, u.password, u.area_id, u.job, u.job_no, u.email, u.mobile, u.photo FROM user_info u JOIN (
+			SELECT m.sign, g.user_id FROM role m JOIN user_role g ON m.id = g.role_id WHERE m.del_flag = 0 AND g.del_flag = 0
+		) r ON u.id = r.user_id WHERE r.sign IN 
+        <foreach collection="role" item="key" open="(" separator="," close=")">
+            #{key}
+        </foreach>
+        AND u.del_flag = 0
+    </select>
+
+	<select id="getUserByArea" resultType="com.gen.auth.server.entity.area.Area">
+		SELECT a.* FROM user_info u JOIN area a ON u.area_id = a.id WHERE u.id = #{userId} AND u.del_flag = 0 LIMIT 1
+	</select>
+	
+	<update id="updateLoginInfo">
+    	UPDATE user_info SET identity = #{identity}, last_login_time = #{last_login_time} WHERE id = #{id}
+    </update>
+</mapper>

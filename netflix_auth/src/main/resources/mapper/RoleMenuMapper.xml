@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gen.auth.server.mapper.role.RoleMenuMapper">
+
+	<select id="getRoleByRid" resultType="com.gen.auth.server.entity.role.RoleMenu">
+        SELECT id, menu_id, role_id, del_flag FROM role_menu WHERE role_id IN
+		<foreach collection="roleIds" open="(" separator="," item="roleId" close=")">
+			#{roleId}
+		</foreach>
+    </select>
+
+    <update id="updateFlag" parameterType="com.gen.auth.server.entity.role.RoleMenu">
+    	UPDATE role_menu SET del_flag = #{delFlag} WHERE role_id = #{roleId} AND menu_id = #{menuId}
+    </update>
+</mapper>

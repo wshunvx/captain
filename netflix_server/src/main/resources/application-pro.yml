@@ -1,0 +1,15 @@
+eureka:
+  instance:
+    version: 1.0
+    hostname: 127.0.0.1
+    instanceId: 1000100100000001
+    metadataMap:
+      zone: 1001
+  server:
+    peerNodeReadTimeoutMs: 1200
+  client:
+    zone: 1001
+    registerWithEureka: false
+    fetchRegistry: false
+    serviceUrl:
+      defaultZone: http://wshunvx:QRVF68VKEV3B830V@127.0.0.1:8761/eureka/
