@@ -19,24 +19,24 @@
         </license>
     </licenses>
     <scm>
-        <url>http://git.genj.com.cn/dev/captain/service</url>
-        <connection>scm:git:http://git.genj.com.cn/dev/captain/service.git</connection>
-        <developerConnection>scm:git:http://git.genj.com.cn:dev/captain/service.git</developerConnection>
+        <url>https://github.com/wshunvx/captain</url>
+        <connection>scm:git:https://github.com/wshunvx/captain.git</connection>
+        <developerConnection>scm:git:https://github.com/wshunvx/captain.git</developerConnection>
     </scm>
     <developers>
         <developer>
-            <name>The Captain Project Contributors</name>
-            <email>wangshun@genj.com.cn</email>
-            <url>http://git.genj.com.cn/dev/captain</url>
+            <name>wshunvx</name>
+            <email>deshun.wang@foxmail.com</email>
+            <url>https://github.com/wshunvx/captain</url>
         </developer>
     </developers>
     <organization>
-        <name>Genj info</name>
-        <url>http://git.genj.com.cn/</url>
+        <name>wshunvx</name>
+        <url>https://github.com/wshunvx</url>
     </organization>
     <issueManagement>
         <system>github</system>
-        <url>http://git.genj.com.cn/dev/captain/issues</url>
+        <url>https://github.com/wshunvx/captain/issues</url>
     </issueManagement>
 
     <properties>
