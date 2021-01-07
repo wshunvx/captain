@@ -1,20 +1,21 @@
 package com.netflix.eureka.dashboard.datasource.entity.rule;
 
-import java.util.Date;
-
 import com.alibaba.csp.sentinel.slots.block.Rule;
 
-public interface RuleEntity {
+public abstract class RuleEntity {
 
-	Long getId();
+	private Long id;
+	
+	public abstract String getApp();
+	public abstract String getInstanceId();
 
-    void setId(Long id);
-
-    String getApp();
-    String getInstanceId();
-
-    Date getGmtCreate();
-    
-    Rule toRule();
-    
+	public abstract Rule toRule();
+	
+	public Long getId() {
+		return id;
+	}
+	public void setId(Long id) {
+		this.id = id;
+	}
+	
 }

@@ -12,6 +12,9 @@ public final class CommandConstants {
 
     public static final String APP_TYPE_GATEWAY = "100";
 
+    public static final int STRIP_PREFIX_ROUTE_TRUE = 0;
+    public static final int STRIP_PREFIX_ROUTE_FALSE = 1;
+    
     public static final int RESOURCE_MODE_ROUTE_ID = 0;
     public static final int RESOURCE_MODE_CUSTOM_API_NAME = 1;
 
@@ -30,6 +33,8 @@ public final class CommandConstants {
     public static final int PARAM_MATCH_STRATEGY_REGEX = 2;
     public static final int PARAM_MATCH_STRATEGY_CONTAINS = 3;
 
+    public static final String NETFLIX_CONTEXT_KEY = "_netflix_context";
+    
     public static final String GATEWAY_CONTEXT_DEFAULT = "gateway_context_default";
     public static final String GATEWAY_CONTEXT_PREFIX = "gateway_context$$";
     public static final String GATEWAY_CONTEXT_ROUTE_PREFIX = "gateway_context$$route$$";

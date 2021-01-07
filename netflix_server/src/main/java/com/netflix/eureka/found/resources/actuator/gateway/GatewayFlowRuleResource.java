@@ -1,5 +1,9 @@
 package com.netflix.eureka.found.resources.actuator.gateway;
 
+import static com.alibaba.csp.sentinel.slots.block.RuleConstant.CONTROL_BEHAVIOR_DEFAULT;
+import static com.alibaba.csp.sentinel.slots.block.RuleConstant.CONTROL_BEHAVIOR_RATE_LIMITER;
+import static com.alibaba.csp.sentinel.slots.block.RuleConstant.FLOW_GRADE_QPS;
+import static com.alibaba.csp.sentinel.slots.block.RuleConstant.FLOW_GRADE_THREAD;
 import static com.netflix.eureka.command.CommandConstants.PARAM_MATCH_STRATEGY_CONTAINS;
 import static com.netflix.eureka.command.CommandConstants.PARAM_MATCH_STRATEGY_EXACT;
 import static com.netflix.eureka.command.CommandConstants.PARAM_MATCH_STRATEGY_REGEX;
@@ -10,16 +14,14 @@ import static com.netflix.eureka.command.CommandConstants.PARAM_PARSE_STRATEGY_H
 import static com.netflix.eureka.command.CommandConstants.PARAM_PARSE_STRATEGY_URL_PARAM;
 import static com.netflix.eureka.command.CommandConstants.RESOURCE_MODE_CUSTOM_API_NAME;
 import static com.netflix.eureka.command.CommandConstants.RESOURCE_MODE_ROUTE_ID;
-import static com.alibaba.csp.sentinel.slots.block.RuleConstant.CONTROL_BEHAVIOR_DEFAULT;
-import static com.alibaba.csp.sentinel.slots.block.RuleConstant.CONTROL_BEHAVIOR_RATE_LIMITER;
-import static com.alibaba.csp.sentinel.slots.block.RuleConstant.FLOW_GRADE_QPS;
-import static com.alibaba.csp.sentinel.slots.block.RuleConstant.FLOW_GRADE_THREAD;
 import static com.netflix.eureka.dashboard.datasource.entity.gateway.GatewayFlowRuleEntity.INTERVAL_UNIT_DAY;
 import static com.netflix.eureka.dashboard.datasource.entity.gateway.GatewayFlowRuleEntity.INTERVAL_UNIT_HOUR;
 import static com.netflix.eureka.dashboard.datasource.entity.gateway.GatewayFlowRuleEntity.INTERVAL_UNIT_MINUTE;
 import static com.netflix.eureka.dashboard.datasource.entity.gateway.GatewayFlowRuleEntity.INTERVAL_UNIT_SECOND;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
@@ -27,25 +29,23 @@ import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MultivaluedMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.StringUtils;
 
 import com.alibaba.csp.sentinel.util.StringUtil;
-
 import com.netflix.appinfo.InstanceInfo;
-import com.netflix.eureka.dashboard.client.SentinelApiClient;
+import com.netflix.eureka.command.Resource;
+import com.netflix.eureka.command.Resource.RuleType;
+import com.netflix.eureka.dashboard.client.HttpapiClient;
 import com.netflix.eureka.dashboard.datasource.entity.gateway.GatewayFlowRuleEntity;
 import com.netflix.eureka.dashboard.datasource.entity.gateway.GatewayParamFlowItemEntity;
-import com.netflix.eureka.dashboard.domain.vo.gateway.rule.AddFlowRuleReqVo;
-import com.netflix.eureka.dashboard.domain.vo.gateway.rule.GatewayParamFlowItemVo;
 import com.netflix.eureka.found.model.Restresult;
-import com.netflix.eureka.found.repository.gateway.InMemGatewayFlowRuleStore;
+import com.netflix.eureka.found.repository.RuleRepositoryAdapter;
 import com.netflix.eureka.gson.JSONFormatter;
 import com.netflix.eureka.registry.PeerAwareInstanceRegistry;
 
@@ -54,30 +54,34 @@ public class GatewayFlowRuleResource {
 
     private final Logger logger = LoggerFactory.getLogger(GatewayFlowRuleResource.class);
 
-    private InMemGatewayFlowRuleStore repository;
-    private SentinelApiClient sentinelApiClient;
+    private HttpapiClient sentinelApiClient;
     private PeerAwareInstanceRegistry instanceRegistry;
+    private RuleRepositoryAdapter<GatewayFlowRuleEntity> repository;
 
-    GatewayFlowRuleResource(SentinelApiClient sentinelApiClient, PeerAwareInstanceRegistry instanceRegistry, InMemGatewayFlowRuleStore repository) {
-    	this.repository = repository;
+    GatewayFlowRuleResource(HttpapiClient sentinelApiClient, PeerAwareInstanceRegistry instanceRegistry, RuleRepositoryAdapter<GatewayFlowRuleEntity> repository) {
     	this.sentinelApiClient = sentinelApiClient;
     	this.instanceRegistry = instanceRegistry;
+    	this.repository = repository;
     }
     
     @GET
     public Restresult<List<GatewayFlowRuleEntity>> queryFlowRules(@QueryParam("app") String app, @QueryParam("instanceId") String instanceId) {
         try {
-        	List<GatewayFlowRuleEntity> rules = null;
+        	List<GatewayFlowRuleEntity> rules = new ArrayList<GatewayFlowRuleEntity>();
         	InstanceInfo instanceInfo = instanceRegistry.getInstanceByAppAndId(app, instanceId);
         	if(instanceInfo != null) {
-        		rules = sentinelApiClient.fetchGatewayFlowRules(app, instanceInfo.getHomePageUrl()).get();
+        		Collection<GatewayFlowRuleEntity> list = repository.getRule(new Resource(RuleType.GATEWAY_RULE_TYPE, instanceId));
+        		if(list == null || list.isEmpty()) {
+        			list = sentinelApiClient.fetchGatewayFlowRules(app, instanceInfo.getHomePageUrl()).get();
+        			if(list != null) {
+                    	rules.addAll(list);
+                    }
+                    repository.setRule(new Resource(RuleType.GATEWAY_RULE_TYPE, instanceId), rules);
+        		} else {
+        			rules.addAll(list);
+        		}
         	}
-        	
-        	if(rules != null) {
-        		repository.saveAll(rules);
-        	}
-            
-            return new Restresult<>(rules);
+            return Restresult.ofSuccess(rules);
         } catch (Throwable throwable) {
             logger.error("query gateway flow rules error:", throwable);
             return errorResponse(throwable);
@@ -88,117 +92,100 @@ public class GatewayFlowRuleResource {
     public Restresult<GatewayFlowRuleEntity> addFlowRule(
     		@QueryParam("app") String app, @QueryParam("instanceId") String instanceId,
     		MultivaluedMap<String, String> queryParams) {
-    	AddFlowRuleReqVo reqVo = inEntityInternal(queryParams);
-        GatewayFlowRuleEntity entity = new GatewayFlowRuleEntity();
-        Integer resourceMode = reqVo.getResourceMode();
+    	GatewayFlowRuleEntity entity = inEntityInternal(queryParams);
+        Integer resourceMode = entity.getResourceMode();
         if (resourceMode == null) {
-            return new Restresult<>(-1, "resourceMode can't be null");
+            return Restresult.ofFailure(-1, "resourceMode can't be null");
         }
         if (!Arrays.asList(RESOURCE_MODE_ROUTE_ID, RESOURCE_MODE_CUSTOM_API_NAME).contains(resourceMode)) {
-            return new Restresult<>(-1, "invalid resourceMode: " + resourceMode);
+            return Restresult.ofFailure(-1, "invalid resourceMode: " + resourceMode);
         }
-        entity.setResourceMode(resourceMode);
 
-        String resource = reqVo.getResource();
+        String resource = entity.getResource();
         if (StringUtil.isBlank(resource)) {
-            return new Restresult<>(-1, "resource can't be null or empty");
+            return Restresult.ofFailure(-1, "resource can't be null or empty");
         }
-        entity.setResource(resource.trim());
 
-        GatewayParamFlowItemVo paramItem = reqVo.getParamItem();
+        GatewayParamFlowItemEntity paramItem = entity.getParamItem();
         if (paramItem != null) {
-            GatewayParamFlowItemEntity itemEntity = new GatewayParamFlowItemEntity();
-            entity.setParamItem(itemEntity);
-
             Integer parseStrategy = paramItem.getParseStrategy();
             if (!Arrays.asList(PARAM_PARSE_STRATEGY_CLIENT_IP, PARAM_PARSE_STRATEGY_HOST, PARAM_PARSE_STRATEGY_HEADER
                     , PARAM_PARSE_STRATEGY_URL_PARAM, PARAM_PARSE_STRATEGY_COOKIE).contains(parseStrategy)) {
-                return new Restresult<>(-1, "invalid parseStrategy: " + parseStrategy);
+                return Restresult.ofFailure(-1, "invalid parseStrategy: " + parseStrategy);
             }
-            itemEntity.setParseStrategy(paramItem.getParseStrategy());
 
             if (Arrays.asList(PARAM_PARSE_STRATEGY_HEADER, PARAM_PARSE_STRATEGY_URL_PARAM, PARAM_PARSE_STRATEGY_COOKIE).contains(parseStrategy)) {
                 String fieldName = paramItem.getFieldName();
                 if (StringUtil.isBlank(fieldName)) {
-                    return new Restresult<>(-1, "fieldName can't be null or empty");
+                    return Restresult.ofFailure(-1, "fieldName can't be null or empty");
                 }
-                itemEntity.setFieldName(paramItem.getFieldName());
             }
 
             String pattern = paramItem.getPattern();
             if (StringUtil.isNotEmpty(pattern)) {
-                itemEntity.setPattern(pattern);
                 Integer matchStrategy = paramItem.getMatchStrategy();
                 if (!Arrays.asList(PARAM_MATCH_STRATEGY_EXACT, PARAM_MATCH_STRATEGY_CONTAINS, PARAM_MATCH_STRATEGY_REGEX).contains(matchStrategy)) {
-                    return new Restresult<>(-1, "invalid matchStrategy: " + matchStrategy);
+                    return Restresult.ofFailure(-1, "invalid matchStrategy: " + matchStrategy);
                 }
-                itemEntity.setMatchStrategy(matchStrategy);
             }
         }
 
-        Integer grade = reqVo.getGrade();
+        Integer grade = entity.getGrade();
         if (grade == null) {
-            return new Restresult<>(-1, "grade can't be null");
+            return Restresult.ofFailure(-1, "grade can't be null");
         }
         if (!Arrays.asList(FLOW_GRADE_THREAD, FLOW_GRADE_QPS).contains(grade)) {
-            return new Restresult<>(-1, "invalid grade: " + grade);
+            return Restresult.ofFailure(-1, "invalid grade: " + grade);
         }
-        entity.setGrade(grade);
 
-        Double count = reqVo.getCount();
+        Double count = entity.getCount();
         if (count == null) {
-            return new Restresult<>(-1, "count can't be null");
+            return Restresult.ofFailure(-1, "count can't be null");
         }
         if (count < 0) {
-            return new Restresult<>(-1, "count should be at lease zero");
+            return Restresult.ofFailure(-1, "count should be at lease zero");
         }
-        entity.setCount(count);
 
-        Long interval = reqVo.getInterval();
+        Long interval = entity.getInterval();
         if (interval == null) {
-            return new Restresult<>(-1, "interval can't be null");
+            return Restresult.ofFailure(-1, "interval can't be null");
         }
         if (interval <= 0) {
-            return new Restresult<>(-1, "interval should be greater than zero");
+            return Restresult.ofFailure(-1, "interval should be greater than zero");
         }
-        entity.setInterval(interval);
 
-        Integer intervalUnit = reqVo.getIntervalUnit();
+        Integer intervalUnit = entity.getIntervalUnit();
         if (intervalUnit == null) {
-            return new Restresult<>(-1, "intervalUnit can't be null");
+            return Restresult.ofFailure(-1, "intervalUnit can't be null");
         }
         if (!Arrays.asList(INTERVAL_UNIT_SECOND, INTERVAL_UNIT_MINUTE, INTERVAL_UNIT_HOUR, INTERVAL_UNIT_DAY).contains(intervalUnit)) {
-            return new Restresult<>(-1, "Invalid intervalUnit: " + intervalUnit);
+            return Restresult.ofFailure(-1, "Invalid intervalUnit: " + intervalUnit);
         }
-        entity.setIntervalUnit(intervalUnit);
 
-        Integer controlBehavior = reqVo.getControlBehavior();
+        Integer controlBehavior = entity.getControlBehavior();
         if (controlBehavior == null) {
-            return new Restresult<>(-1, "controlBehavior can't be null");
+            return Restresult.ofFailure(-1, "controlBehavior can't be null");
         }
         if (!Arrays.asList(CONTROL_BEHAVIOR_DEFAULT, CONTROL_BEHAVIOR_RATE_LIMITER).contains(controlBehavior)) {
-            return new Restresult<>(-1, "invalid controlBehavior: " + controlBehavior);
+            return Restresult.ofFailure(-1, "invalid controlBehavior: " + controlBehavior);
         }
-        entity.setControlBehavior(controlBehavior);
 
         if (CONTROL_BEHAVIOR_DEFAULT == controlBehavior) {
-            Integer burst = reqVo.getBurst();
+            Integer burst = entity.getBurst();
             if (burst == null) {
-                return new Restresult<>(-1, "burst can't be null");
+                return Restresult.ofFailure(-1, "burst can't be null");
             }
             if (burst < 0) {
-                return new Restresult<>(-1, "invalid burst: " + burst);
+                return Restresult.ofFailure(-1, "invalid burst: " + burst);
             }
-            entity.setBurst(burst);
         } else if (CONTROL_BEHAVIOR_RATE_LIMITER == controlBehavior) {
-            Integer maxQueueingTimeoutMs = reqVo.getMaxQueueingTimeoutMs();
+            Integer maxQueueingTimeoutMs = entity.getMaxQueueingTimeoutMs();
             if (maxQueueingTimeoutMs == null) {
-                return new Restresult<>(-1, "maxQueueingTimeoutMs can't be null");
+                return Restresult.ofFailure(-1, "maxQueueingTimeoutMs can't be null");
             }
             if (maxQueueingTimeoutMs < 0) {
-                return new Restresult<>(-1, "invalid maxQueueingTimeoutMs: " + maxQueueingTimeoutMs);
+                return Restresult.ofFailure(-1, "invalid maxQueueingTimeoutMs: " + maxQueueingTimeoutMs);
             }
-            entity.setMaxQueueingTimeoutMs(maxQueueingTimeoutMs);
         }
         try {
         	InstanceInfo instanceInfo = instanceRegistry.getInstanceByAppAndId(app, instanceId);
@@ -206,129 +193,109 @@ public class GatewayFlowRuleResource {
         		entity.setApp(app);
                 entity.setInstanceId(instanceId);
                 entity.setGmtModified(new Date());
-                repository.save(entity);
-                boolean status = publishRules(app, instanceInfo.getHomePageUrl());
-                logger.warn("publish gateway apis fail after add, app={} | {}", entity.getApp(), status);
+                if(repository.setRule(new Resource(RuleType.GATEWAY_RULE_TYPE, instanceId), entity)) {
+        			boolean status = publishRules(instanceId, instanceInfo.getHomePageUrl());
+            		if(!status) {
+            			logger.warn("Publish degrade rules failed, app={} | {}", app, status);
+            		}
+        		}
         	}
         } catch (Throwable throwable) {
             logger.error("add gateway flow rule error:", throwable);
             return errorResponse(throwable);
         }
 
-        return new Restresult<>(entity);
+        return Restresult.ofSuccess(entity);
     }
 
     @PUT
     public Restresult<GatewayFlowRuleEntity> updateFlowRule(
     		@QueryParam("app") String app, @QueryParam("instanceId") String instanceId,
     		MultivaluedMap<String, String> queryParams) {
-    	AddFlowRuleReqVo reqVo = inEntityInternal(queryParams);
-        Long id = reqVo.getId();
-        if (id == null) {
-            return new Restresult<>(-1, "id can't be null");
-        }
-
-        GatewayFlowRuleEntity entity = repository.findById(app, id);
-        if (entity == null) {
-            return new Restresult<>(-1, "gateway flow rule does not exist, id=" + id);
-        }
-
-        GatewayParamFlowItemVo paramItem = reqVo.getParamItem();
+    	GatewayFlowRuleEntity entity = inEntityInternal(queryParams);
+    	if(StringUtils.isEmpty(entity.getId())) {
+    		return Restresult.ofFailure(-1, "Unable to get the value of id.");
+    	}
+        GatewayParamFlowItemEntity paramItem = entity.getParamItem();
         if (paramItem != null) {
-            GatewayParamFlowItemEntity itemEntity = new GatewayParamFlowItemEntity();
-            entity.setParamItem(itemEntity);
-
             Integer parseStrategy = paramItem.getParseStrategy();
             if (!Arrays.asList(PARAM_PARSE_STRATEGY_CLIENT_IP, PARAM_PARSE_STRATEGY_HOST, PARAM_PARSE_STRATEGY_HEADER
                     , PARAM_PARSE_STRATEGY_URL_PARAM, PARAM_PARSE_STRATEGY_COOKIE).contains(parseStrategy)) {
-                return new Restresult<>(-1, "invalid parseStrategy: " + parseStrategy);
+                return Restresult.ofFailure(-1, "invalid parseStrategy: " + parseStrategy);
             }
-            itemEntity.setParseStrategy(paramItem.getParseStrategy());
 
             if (Arrays.asList(PARAM_PARSE_STRATEGY_HEADER, PARAM_PARSE_STRATEGY_URL_PARAM, PARAM_PARSE_STRATEGY_COOKIE).contains(parseStrategy)) {
                 String fieldName = paramItem.getFieldName();
                 if (StringUtil.isBlank(fieldName)) {
-                    return new Restresult<>(-1, "fieldName can't be null or empty");
+                    return Restresult.ofFailure(-1, "fieldName can't be null or empty");
                 }
-                itemEntity.setFieldName(paramItem.getFieldName());
             }
 
             String pattern = paramItem.getPattern();
             if (StringUtil.isNotEmpty(pattern)) {
-                itemEntity.setPattern(pattern);
                 Integer matchStrategy = paramItem.getMatchStrategy();
                 if (!Arrays.asList(PARAM_MATCH_STRATEGY_EXACT, PARAM_MATCH_STRATEGY_CONTAINS, PARAM_MATCH_STRATEGY_REGEX).contains(matchStrategy)) {
-                    return new Restresult<>(-1, "invalid matchStrategy: " + matchStrategy);
+                    return Restresult.ofFailure(-1, "invalid matchStrategy: " + matchStrategy);
                 }
-                itemEntity.setMatchStrategy(matchStrategy);
             }
-        } else {
-            entity.setParamItem(null);
         }
 
-        Integer grade = reqVo.getGrade();
+        Integer grade = entity.getGrade();
         if (grade == null) {
-            return new Restresult<>(-1, "grade can't be null");
+            return Restresult.ofFailure(-1, "grade can't be null");
         }
         if (!Arrays.asList(FLOW_GRADE_THREAD, FLOW_GRADE_QPS).contains(grade)) {
-            return new Restresult<>(-1, "invalid grade: " + grade);
+            return Restresult.ofFailure(-1, "invalid grade: " + grade);
         }
-        entity.setGrade(grade);
 
-        Double count = reqVo.getCount();
+        Double count = entity.getCount();
         if (count == null) {
-            return new Restresult<>(-1, "count can't be null");
+            return Restresult.ofFailure(-1, "count can't be null");
         }
         if (count < 0) {
-            return new Restresult<>(-1, "count should be at lease zero");
+            return Restresult.ofFailure(-1, "count should be at lease zero");
         }
-        entity.setCount(count);
 
-        Long interval = reqVo.getInterval();
+        Long interval = entity.getInterval();
         if (interval == null) {
-            return new Restresult<>(-1, "interval can't be null");
+            return Restresult.ofFailure(-1, "interval can't be null");
         }
         if (interval <= 0) {
-            return new Restresult<>(-1, "interval should be greater than zero");
+            return Restresult.ofFailure(-1, "interval should be greater than zero");
         }
-        entity.setInterval(interval);
 
-        Integer intervalUnit = reqVo.getIntervalUnit();
+        Integer intervalUnit = entity.getIntervalUnit();
         if (intervalUnit == null) {
-            return new Restresult<>(-1, "intervalUnit can't be null");
+            return Restresult.ofFailure(-1, "intervalUnit can't be null");
         }
         if (!Arrays.asList(INTERVAL_UNIT_SECOND, INTERVAL_UNIT_MINUTE, INTERVAL_UNIT_HOUR, INTERVAL_UNIT_DAY).contains(intervalUnit)) {
-            return new Restresult<>(-1, "Invalid intervalUnit: " + intervalUnit);
+            return Restresult.ofFailure(-1, "Invalid intervalUnit: " + intervalUnit);
         }
-        entity.setIntervalUnit(intervalUnit);
 
-        Integer controlBehavior = reqVo.getControlBehavior();
+        Integer controlBehavior = entity.getControlBehavior();
         if (controlBehavior == null) {
-            return new Restresult<>(-1, "controlBehavior can't be null");
+            return Restresult.ofFailure(-1, "controlBehavior can't be null");
         }
         if (!Arrays.asList(CONTROL_BEHAVIOR_DEFAULT, CONTROL_BEHAVIOR_RATE_LIMITER).contains(controlBehavior)) {
-            return new Restresult<>(-1, "invalid controlBehavior: " + controlBehavior);
+            return Restresult.ofFailure(-1, "invalid controlBehavior: " + controlBehavior);
         }
-        entity.setControlBehavior(controlBehavior);
 
         if (CONTROL_BEHAVIOR_DEFAULT == controlBehavior) {
-            Integer burst = reqVo.getBurst();
+            Integer burst = entity.getBurst();
             if (burst == null) {
-                return new Restresult<>(-1, "burst can't be null");
+                return Restresult.ofFailure(-1, "burst can't be null");
             }
             if (burst < 0) {
-                return new Restresult<>(-1, "invalid burst: " + burst);
+                return Restresult.ofFailure(-1, "invalid burst: " + burst);
             }
-            entity.setBurst(burst);
         } else if (CONTROL_BEHAVIOR_RATE_LIMITER == controlBehavior) {
-            Integer maxQueueingTimeoutMs = reqVo.getMaxQueueingTimeoutMs();
+            Integer maxQueueingTimeoutMs = entity.getMaxQueueingTimeoutMs();
             if (maxQueueingTimeoutMs == null) {
-                return new Restresult<>(-1, "maxQueueingTimeoutMs can't be null");
+                return Restresult.ofFailure(-1, "maxQueueingTimeoutMs can't be null");
             }
             if (maxQueueingTimeoutMs < 0) {
-                return new Restresult<>(-1, "invalid maxQueueingTimeoutMs: " + maxQueueingTimeoutMs);
+                return Restresult.ofFailure(-1, "invalid maxQueueingTimeoutMs: " + maxQueueingTimeoutMs);
             }
-            entity.setMaxQueueingTimeoutMs(maxQueueingTimeoutMs);
         }
 
         Date date = new Date();
@@ -337,47 +304,51 @@ public class GatewayFlowRuleResource {
         try {
         	InstanceInfo instanceInfo = instanceRegistry.getInstanceByAppAndId(app, instanceId);
         	if(instanceInfo != null) {
-        		repository.save(entity);
-        		boolean status = publishRules(app, instanceInfo.getHomePageUrl());
-                logger.warn("publish gateway apis fail after update, app={} | {}", entity.getApp(), status);
+        		if(repository.setRule(new Resource(RuleType.GATEWAY_RULE_TYPE, instanceId), entity)) {
+        			boolean status = publishRules(instanceId, instanceInfo.getHomePageUrl());
+        			if(!status) {
+        				logger.warn("Publish degrade rules failed, app={} | {}", app, status);
+        			}
+        		}
         	}
         } catch (Throwable throwable) {
             logger.error("update gateway flow rule error:", throwable);
             return errorResponse(throwable);
         }
 
-        return new Restresult<>(entity);
+        return Restresult.ofSuccess(entity);
     }
 
 
     @DELETE
-    @Path("{id}")
-    public Restresult<Long> deleteFlowRule(@PathParam("id") Long id, @QueryParam("app") String app, @QueryParam("instanceId") String instanceId) {
-        GatewayFlowRuleEntity oldEntity = repository.delete(app, id);
-        if (oldEntity == null) {
-            return new Restresult<>();
-        }
+    public Restresult<Long> deleteFlowRule(@QueryParam("app") String app, @QueryParam("instanceId") String instanceId,
+    		@QueryParam("id") Long id) {
         try {
+        	GatewayFlowRuleEntity entity = repository.getRule(new Resource(RuleType.GATEWAY_RULE_TYPE, instanceId), id);
+        	if(entity == null) {
+        		return Restresult.ofFailure(-1, "Unable to get the value of id.");
+        	}
         	InstanceInfo instanceInfo = instanceRegistry.getInstanceByAppAndId(app, instanceId);
         	if(instanceInfo != null) {
-        		if (!publishRules(app, instanceInfo.getHomePageUrl())) {
-        			logger.warn("publish gateway flow rules fail after delete");
-                }
+        		boolean remove = repository.removeRule(new Resource(RuleType.GATEWAY_RULE_TYPE, instanceId), entity);
+        		if(remove) {
+        			boolean status = publishRules(instanceId, instanceInfo.getHomePageUrl());
+            		if(!status) {
+            			repository.setRule(new Resource(RuleType.GATEWAY_RULE_TYPE, instanceId), entity);
+            			logger.warn("Publish degrade rules failed, app={} | {}", app, status);
+            		}
+        		}
         	}
         } catch (Throwable throwable) {
             logger.error("delete gateway flow rule error:", throwable);
             return errorResponse(throwable);
         }
 
-        return new Restresult<>(id);
+        return Restresult.ofSuccess(id);
     }
     
-    private AddFlowRuleReqVo inEntityInternal(MultivaluedMap<String, String> queryParams) {
-    	AddFlowRuleReqVo addFlowRuleReqVo = new AddFlowRuleReqVo();
-    	String id = queryParams.getFirst("id");
-    	if(StringUtil.isNotEmpty(id)) {
-    		addFlowRuleReqVo.setId(Long.valueOf(id));
-    	}
+    private GatewayFlowRuleEntity inEntityInternal(MultivaluedMap<String, String> queryParams) {
+    	GatewayFlowRuleEntity addFlowRuleReqVo = new GatewayFlowRuleEntity();
     	addFlowRuleReqVo.setResource(queryParams.getFirst("resource"));
     	String resourceMode = queryParams.getFirst("resourceMode");
     	if(StringUtil.isNotEmpty(resourceMode)) {
@@ -413,17 +384,17 @@ public class GatewayFlowRuleResource {
     	}
     	String paramItem = queryParams.getFirst("paramItem");
     	if(StringUtil.isNotEmpty(paramItem)) {
-    		addFlowRuleReqVo.setParamItem(JSONFormatter.fromJSON(paramItem, GatewayParamFlowItemVo.class));
+    		addFlowRuleReqVo.setParamItem(JSONFormatter.fromJSON(paramItem, GatewayParamFlowItemEntity.class));
     	}
     	return addFlowRuleReqVo;
     }
     
     private <T> Restresult<T> errorResponse(Throwable ex) {
-        return new Restresult<>(-1, ex.getClass().getName() + ", " + ex.getMessage());
+        return Restresult.ofFailure(-1, ex.getClass().getName() + ", " + ex.getMessage());
     }
 
-    private boolean publishRules(String app, String homePage) {
-        List<GatewayFlowRuleEntity> rules = repository.findAllByApp(app);
-        return sentinelApiClient.modifyGatewayFlowRules(app, homePage, rules);
+    private boolean publishRules(String instanceId, String homePage) {
+        Collection<GatewayFlowRuleEntity> rules = repository.getRule(new Resource(RuleType.GATEWAY_RULE_TYPE, instanceId));
+        return sentinelApiClient.modifyGatewayFlowRules(homePage, rules);
     }
 }

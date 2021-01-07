@@ -22,8 +22,8 @@ import com.netflix.discovery.shared.Application;
 import com.netflix.discovery.shared.Applications;
 import com.netflix.eureka.dashboard.datasource.entity.MachineEntity;
 import com.netflix.eureka.found.model.Restresult;
-import com.netflix.eureka.found.sentinel.SentinelServerContext;
-import com.netflix.eureka.found.sentinel.SentinelServerContextHolder;
+import com.netflix.eureka.found.sentinel.ServerContext;
+import com.netflix.eureka.found.sentinel.ServerContextHolder;
 import com.netflix.eureka.registry.PeerAwareInstanceRegistry;
 
 @Path("/{version}/host")
@@ -33,12 +33,12 @@ public class HostResource {
     private PeerAwareInstanceRegistry instanceRegistry;
 
     @Inject
-    HostResource(SentinelServerContext serverContext) {
+    HostResource(ServerContext serverContext) {
         this.instanceRegistry = serverContext.getInstanceRegistry();
     }
 
     public HostResource() {
-        this(SentinelServerContextHolder.getSentinel().getServerContext());
+        this(ServerContextHolder.getSecurity().getServerContext());
     }
     
     @GET
@@ -49,7 +49,7 @@ public class HostResource {
 		for(Application app: apps.getRegisteredApplications()) {
 			names.add(app.getName());
 		}
-		return new Restresult<>(names);
+		return Restresult.ofSuccess(names);
         
     }
     
@@ -80,7 +80,7 @@ public class HostResource {
     			
     		}
     	}
-        return new Restresult<>(machines.asMap());
+        return Restresult.ofSuccess(machines.asMap());
     }
     
     @GET
@@ -103,7 +103,7 @@ public class HostResource {
     			
     		}
     	}
-        return new Restresult<>(machines.asMap());
+        return Restresult.ofSuccess(machines.asMap());
     }
 
     public MachineEntity toMachineEntity(InstanceInfo instanceInfo) {

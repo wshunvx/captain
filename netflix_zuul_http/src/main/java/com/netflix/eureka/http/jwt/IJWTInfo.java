@@ -2,19 +2,19 @@ package com.netflix.eureka.http.jwt;
 
 public interface IJWTInfo {
 	/**
-     * 获取用户名
+     * User name
      * @return
      */
     String getUniqueName();
 
     /**
-     * 获取用户ID
+     * User id
      * @return
      */
     String getId();
 
     /**
-     * 获取权限
+     * User meta data
      * @return
      */
     String getMetadata();

@@ -1,5 +1,7 @@
 package com.netflix.eureka.found.resources.actuator;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
@@ -9,22 +11,24 @@ import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MultivaluedMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.StringUtils;
 
 import com.alibaba.csp.sentinel.util.StringUtil;
 import com.netflix.appinfo.InstanceInfo;
-import com.netflix.eureka.dashboard.client.SentinelApiClient;
+import com.netflix.eureka.command.Resource;
+import com.netflix.eureka.command.Resource.RuleType;
+import com.netflix.eureka.dashboard.client.HttpapiClient;
 import com.netflix.eureka.dashboard.datasource.entity.rule.DegradeRuleEntity;
-import com.netflix.eureka.dashboard.repository.rule.RuleRepository;
 import com.netflix.eureka.found.model.Restresult;
-import com.netflix.eureka.found.sentinel.SentinelServerContext;
-import com.netflix.eureka.found.sentinel.SentinelServerContextHolder;
+import com.netflix.eureka.found.repository.RuleRepositoryAdapter;
+import com.netflix.eureka.found.sentinel.ServerContext;
+import com.netflix.eureka.found.sentinel.ServerContextHolder;
 import com.netflix.eureka.registry.PeerAwareInstanceRegistry;
 
 @Path("/{version}/degrade")
@@ -33,33 +37,39 @@ public class DegradeResource {
 
     private final Logger logger = LoggerFactory.getLogger(DegradeResource.class);
 
-    private SentinelApiClient sentinelApiClient;
+    private HttpapiClient sentinelApiClient;
     private PeerAwareInstanceRegistry instanceRegistry;
-    private RuleRepository<DegradeRuleEntity> repository;
+    private RuleRepositoryAdapter<DegradeRuleEntity> repository;
 
     @Inject
-    DegradeResource(SentinelServerContext serverContext) {
-    	this.sentinelApiClient = serverContext.getSentinelApiClient();
+    DegradeResource(ServerContext serverContext) {
+    	this.sentinelApiClient = serverContext.getHttpapiClient();
         this.instanceRegistry = serverContext.getInstanceRegistry();
         this.repository = serverContext.getDegradeRule();
     }
 
     public DegradeResource() {
-        this(SentinelServerContextHolder.getSentinel().getServerContext());
+        this(ServerContextHolder.getSecurity().getServerContext());
     }
     
     @GET
     public Restresult<List<DegradeRuleEntity>> apiQueryRules(@QueryParam("app") String app, @QueryParam("instanceId") String instanceId) {
         try {
-        	List<DegradeRuleEntity> rules = null;
+        	List<DegradeRuleEntity> rules = new ArrayList<DegradeRuleEntity>();
         	InstanceInfo instanceInfo = instanceRegistry.getInstanceByAppAndId(app, instanceId);
         	if(instanceInfo != null) {
-        		rules = sentinelApiClient.fetchDegradeRuleOfMachine(app, instanceInfo.getHomePageUrl());
+        		Collection<DegradeRuleEntity> list = repository.getRule(new Resource(RuleType.DEGRADE_RULE_TYPE, instanceId));
+        		if(list == null || list.isEmpty()) {
+        			list = sentinelApiClient.fetchDegradeRuleOfMachine(instanceInfo.getAppName(), instanceInfo.getHomePageUrl());
+        			if(list != null) {
+                    	rules.addAll(list);
+                    }
+                    repository.setRule(new Resource(RuleType.DEGRADE_RULE_TYPE, instanceId), rules);
+        		} else {
+        			rules.addAll(list);
+        		}
         	}
-        	if(rules != null) {
-        		repository.saveAll(rules);
-        	}
-            return new Restresult<>(rules);
+            return Restresult.ofSuccess(rules);
         } catch (Throwable throwable) {
             logger.error("queryApps error:", throwable);
             return errorResponse(throwable);
@@ -78,16 +88,19 @@ public class DegradeResource {
         		entity.setApp(app);
         		entity.setInstanceId(instanceId);
         		entity.setGmtCreate(new Date());
-        		repository.save(entity);
-        		boolean status = publishRules(entity.getApp(), instanceInfo.getHomePageUrl());
-                logger.warn("Publish degrade rules failed, app={} | {}", entity.getApp(), status);
+        		if(repository.setRule(new Resource(RuleType.DEGRADE_RULE_TYPE, instanceId), entity)) {
+        			boolean status = publishRules(instanceId, instanceInfo.getHomePageUrl());
+            		if(!status) {
+            			logger.warn("Publish degrade rules failed, app={} | {}", app, status);
+            		}
+        		}
         	}
         } catch (Throwable t) {
-            logger.error("Failed to add new degrade rule, app={}, id={}", entity.getApp(), entity.getId(), t);
+            logger.error("Failed to add new degrade rule, app={}", entity.getApp(), t);
             return errorResponse(t);
         }
         
-        return new Restresult<>(entity);
+        return Restresult.ofSuccess(entity);
     }
 
     @PUT
@@ -95,54 +108,64 @@ public class DegradeResource {
     		@QueryParam("app") String app, 
     		@QueryParam("instanceId") String instanceId, 
     		MultivaluedMap<String, String> queryParams) {
-        DegradeRuleEntity entity = inEntityInternal(queryParams);
         try {
+        	DegradeRuleEntity entity = inEntityInternal(queryParams);
+        	if(StringUtils.isEmpty(entity.getId())) {
+        		return Restresult.ofFailure(-1, "Unable to get the value of id.");
+        	}
         	InstanceInfo instanceInfo = instanceRegistry.getInstanceByAppAndId(app, instanceId);
         	if(instanceInfo != null) {
         		entity.setApp(app);
         		entity.setInstanceId(instanceId);
         		entity.setGmtModified(new Date());
-        		repository.save(entity);
-        		boolean status = publishRules(entity.getApp(), instanceInfo.getHomePageUrl());
-                logger.warn("Publish degrade rules failed, app={} | {}", entity.getApp(), status);
+        		if(repository.setRule(new Resource(RuleType.DEGRADE_RULE_TYPE, instanceId), entity)) {
+        			boolean status = publishRules(instanceId, instanceInfo.getHomePageUrl());
+        			if(!status) {
+        				logger.warn("Publish degrade rules failed, app={} | {}", app, status);
+        			}
+        		}
         	}
+        	return Restresult.ofSuccess(entity);
         } catch (Throwable t) {
-            logger.error("Failed to save degrade rule, id={}, rule={}", entity.getId(), entity, t);
+            logger.error("Failed to save degrade rule, app={}", app, t);
             return errorResponse(t);
         }
-        return new Restresult<>(entity);
     }
 
     @DELETE
-    @Path("{id}")
-    public Restresult<Long> delete(@PathParam("id") Long id, 
-    		@QueryParam("app") String app, @QueryParam("instanceId") String instanceId) {
+    public Restresult<String> delete(@QueryParam("app") String app, @QueryParam("instanceId") String instanceId,
+    		@QueryParam("id") Long id) {
         try {
-        	DegradeRuleEntity oldEntity = repository.delete(app, id);
-            if (oldEntity == null) {
-                return new Restresult<>(null);
-            }
+        	DegradeRuleEntity entity = repository.getRule(new Resource(RuleType.DEGRADE_RULE_TYPE, instanceId), id);
+        	if(entity == null) {
+        		return Restresult.ofFailure(-1, "Unable to get the value of id.");
+        	}
         	InstanceInfo instanceInfo = instanceRegistry.getInstanceByAppAndId(app, instanceId);
         	if(instanceInfo != null) {
-        		if (!publishRules(oldEntity.getApp(), instanceInfo.getHomePageUrl())) {
-                    logger.warn("Publish degrade rules failed, app={}", oldEntity.getApp());
-                }
+        		boolean remove = repository.removeRule(new Resource(RuleType.DEGRADE_RULE_TYPE, instanceId), entity);
+        		if(remove) {
+        			boolean status = publishRules(instanceId, instanceInfo.getHomePageUrl());
+            		if(!status) {
+            			repository.setRule(new Resource(RuleType.DEGRADE_RULE_TYPE, instanceId), entity);
+            			logger.warn("Publish degrade rules failed, app={} | {}", app, status);
+            		}
+        		}
         	}
         } catch (Throwable throwable) {
-            logger.error("Failed to delete degrade rule, id={}", id, throwable);
+            logger.error("Failed to delete degrade rule, app={}", app, throwable);
             return errorResponse(throwable);
         }
         
-        return new Restresult<>(id);
+        return Restresult.ofSuccess("Ok");
     }
 
     private <T> Restresult<T> errorResponse(Throwable ex) {
-        return new Restresult<>(-1, ex.getClass().getName() + ", " + ex.getMessage());
+        return Restresult.ofFailure(-1, ex.getClass().getName() + ", " + ex.getMessage());
     }
     
-    private boolean publishRules(String app, String homePage) {
-        List<DegradeRuleEntity> rules = repository.findAllByApp(app);
-        return sentinelApiClient.setDegradeRuleOfMachine(app, homePage, rules);
+    private boolean publishRules(String instanceId, String homePage) {
+        Collection<DegradeRuleEntity> rules = repository.getRule(new Resource(RuleType.DEGRADE_RULE_TYPE, instanceId));
+        return sentinelApiClient.setDegradeRuleOfMachine(homePage, rules);
     }
 
     private DegradeRuleEntity inEntityInternal(MultivaluedMap<String, String> queryParams) {

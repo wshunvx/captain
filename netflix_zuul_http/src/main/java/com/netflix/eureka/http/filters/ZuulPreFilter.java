@@ -3,6 +3,7 @@ package com.netflix.eureka.http.filters;
 import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.PRE_TYPE;
 import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.SERVICE_ID_KEY;
 
+import java.security.KeyPair;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
@@ -12,10 +13,10 @@ import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 
 import org.springframework.cloud.netflix.zuul.filters.Route;
-import org.springframework.cloud.netflix.zuul.filters.RouteLocator;
 import org.springframework.cloud.netflix.zuul.filters.ZuulProperties;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.StringUtils;
 import org.springframework.web.util.UrlPathHelper;
 
 import com.alibaba.csp.sentinel.AsyncEntry;
@@ -23,15 +24,15 @@ import com.alibaba.csp.sentinel.EntryType;
 import com.alibaba.csp.sentinel.ResourceTypeConstants;
 import com.alibaba.csp.sentinel.SphU;
 import com.alibaba.csp.sentinel.context.ContextUtil;
-import com.alibaba.csp.sentinel.slots.block.AbstractRule;
 import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.alibaba.csp.sentinel.util.StringUtil;
 import com.alibaba.csp.sentinel.util.function.Predicate;
 import com.netflix.eureka.command.CommandConstants;
 import com.netflix.eureka.common.ApiDefinition;
 import com.netflix.eureka.common.GatewayFlowRule;
-import com.netflix.eureka.http.api.matcher.RequestContextApiMatcher;
-import com.netflix.eureka.http.api.zuul.GatewayApiDefinitionManager;
+import com.netflix.eureka.http.auth.UriCache;
+import com.netflix.eureka.http.cache.IRouteCache;
+import com.netflix.eureka.http.check.matcher.RequestContextApiMatcher;
 import com.netflix.eureka.http.common.GatewayParamParser;
 import com.netflix.eureka.http.common.RequestItemParser;
 import com.netflix.eureka.http.constants.ZuulConstant;
@@ -48,17 +49,20 @@ public abstract class ZuulPreFilter extends ZuulFilter {
 
     private final List<String> gatePrefix;
     
-    protected RouteLocator routeLocator;
+    protected IRouteCache routeLocator;
     protected UrlPathHelper urlPathHelper = new UrlPathHelper();
 
-    public ZuulPreFilter(RouteLocator routeLocator, ZuulProperties properties, List<String> prefix) {
+    protected UriCache uriCache;
+    
+    public ZuulPreFilter(UriCache uriCache, IRouteCache routeLocator, ZuulProperties properties, List<String> prefix) {
+    	this.uriCache = uriCache;
     	this.routeLocator = routeLocator;
     	this.gatePrefix = prefix;
     	this.urlPathHelper.setRemoveSemicolonContent(properties.isRemoveSemicolonContent());
     	this.urlPathHelper.setUrlDecode(properties.isDecodeUrl());
     }
     
-    abstract public IJWTInfo getJWTUser(String userToken, String serviceId, String serviceType) throws ZuulException;
+    abstract public IJWTInfo getJWTUser(KeyPair keyMap, String userToken);
     
     @Override
     public String filterType() {
@@ -75,7 +79,6 @@ public abstract class ZuulPreFilter extends ZuulFilter {
        	RequestContext requestContext = RequestContext.getCurrentContext();
        	HttpServletRequest request = requestContext.getRequest();
        	String requestUri = request.getRequestURI();
-       	// 不进行拦截的地址
            if (isStartWith(requestUri)) {
                return false;
            }
@@ -101,58 +104,46 @@ public abstract class ZuulPreFilter extends ZuulFilter {
                     headers.add(name, value);
                 }
             }
-            final String requestURI = this.urlPathHelper.getPathWithinApplication(request);
-            Route route = this.routeLocator.getMatchingRoute(requestURI);
-		
+            final String requestURI = urlPathHelper.getPathWithinApplication(request);
+            Route route = routeLocator.getMatchingRoute(requestURI);
         	routeId = route.getId();
         	String origin = parseOrigin(route);
         	
             if (StringUtil.isNotBlank(routeId)) {
                 ContextUtil.enter(CommandConstants.GATEWAY_CONTEXT_ROUTE_PREFIX + routeId, origin);
-                doSentinelEntry(routeId, CommandConstants.RESOURCE_MODE_ROUTE_ID, ctx, holders);
+                doSecurityEntry(routeId, CommandConstants.RESOURCE_MODE_ROUTE_ID, ctx, holders);
             }
 
-            Set<String> matchingApis = pickMatchingApiDefinitions(ctx);
+            Set<String> matchingApis = pickMatchingApiDefinitions(route);
             if (!matchingApis.isEmpty() && ContextUtil.getContext() == null) {
                 ContextUtil.enter(ZuulConstant.ZUUL_DEFAULT_CONTEXT, origin);
             }
             for (String apiName : matchingApis) {
-                doSentinelEntry(apiName, CommandConstants.RESOURCE_MODE_CUSTOM_API_NAME, ctx, holders);
+            	doSecurityEntry(apiName, CommandConstants.RESOURCE_MODE_CUSTOM_API_NAME, ctx, holders);
             }
             
-//			String authToken = headers.getFirst(ZuulConstant.AUTHORITY_TYPE.toLowerCase());
-//			if (StringUtils.isEmpty(authToken) || "undefined".equals(authToken)) {
-//				throw new ZuulException("Forbidden", HttpStatus.FORBIDDEN.value(), "User Token undefined!");
-//			}
-//
-//			if (StringUtils.isEmpty(authToken)) {
-//				String strings = request.getParameter("token");
-//				if (strings != null) {
-//					authToken = strings;
-//				}
-//			}
-//			IJWTInfo iJWTInfo = getJWTUser(authToken, route.getLocation(), route.getId());
-//			if (iJWTInfo == null) {
-//				throw new ZuulException("Forbidden", HttpStatus.FORBIDDEN.value(), "User Token Forbidden or Expired!");
-//			}
-//			ctx.put(ZuulConstant.AUTHORITY_TYPE_USER, iJWTInfo);
+			String authToken = headers.getFirst(ZuulConstant.AUTHORITY_TYPE.toLowerCase());
+			if (StringUtils.isEmpty(authToken) || "undefined".equals(authToken)) {
+				String strings = request.getParameter("token");
+				if (strings != null) {
+					authToken = strings;
+				}
+			}
+			
+			if(uriCache.verification(route.getLocation(), request.getMethod(), route)) {
+				IJWTInfo iJWTInfo = getJWTUser(uriCache.keyPair(), authToken);
+				if (iJWTInfo == null) {
+					throw new ZuulException("Forbidden", HttpStatus.FORBIDDEN.value(), "User not logged in.");
+				}
+				ctx.put(ZuulConstant.AUTHORITY_TYPE_USER, iJWTInfo);
+			}
         } catch (Exception ex) {
             // Prevent routing from running
-            String message;
-            if(ex instanceof BlockException) {
-            	AbstractRule abstractRule = ((BlockException) ex).getRule();
-            	if(abstractRule != null) {
-            		message = "Zuul block exception " + abstractRule.getResource();
-            	}else {
-            		message = "Zuul block exception " + ZuulConstant.ZUUL_DEFAULT_CONTEXT;
-            	}
-            }else {
-            	message = "System Error " + ex.getMessage();
-            }
+            ctx.setThrowable(ex);
             ctx.setRouteHost(null);
             ctx.setSendZuulResponse(false);
-            ctx.setThrowable(new ZuulException("Forbidden", HttpStatus.FORBIDDEN.value(), message));
             ctx.set(SERVICE_ID_KEY, null);
+            ctx.setResponseStatusCode(HttpStatus.FORBIDDEN.value());
         } finally {
         	// We don't exit the entry here. We need to exit the entries in post filter to record Rt correctly.
             // So here the entries will be carried in the request context.
@@ -163,7 +154,7 @@ public abstract class ZuulPreFilter extends ZuulFilter {
         return null;
     }
     
-    private void doSentinelEntry(String resourceName, final int resType, RequestContext requestContext,
+    private void doSecurityEntry(String resourceName, final int resType, RequestContext requestContext,
     		EntryUtils holders) throws BlockException {
         Object[] params = paramParser.parseParameterFor(resourceName, requestContext,
             new Predicate<GatewayFlowRule>() {
@@ -190,14 +181,22 @@ public abstract class ZuulPreFilter extends ZuulFilter {
      * @param requestContext
      * @return
      */
-    private Set<String> pickMatchingApiDefinitions(RequestContext requestContext) {
+    private Set<String> pickMatchingApiDefinitions(Route route) {
     	Set<String> apis = new HashSet<>();
-        for (ApiDefinition definition: GatewayApiDefinitionManager.getApiDefinitions()) {
-        	RequestContextApiMatcher matcher = new RequestContextApiMatcher(definition);
-            if (matcher.test(requestContext)) {
+    	routeLocator.getLocateRoutes().forEach((path, zuul) -> {
+    		ApiDefinition definition = new ApiDefinition();
+			definition.setApiName(zuul.getId());
+			definition.setServiceId(zuul.getServiceId());
+			
+			definition.setUrl(zuul.getUrl());
+			definition.setPattern(zuul.getPath());
+			definition.setMatchStrategy(CommandConstants.URL_MATCH_STRATEGY_PREFIX);
+			
+			RequestContextApiMatcher matcher = new RequestContextApiMatcher(definition);
+            if (matcher.test(route)) {
                 apis.add(matcher.getApiName());
             }
-        }
+    	});
         return apis;
     }
     

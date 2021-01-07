@@ -1,12 +1,10 @@
 package com.netflix.eureka.dashboard.datasource.entity.rule;
 
-import com.alibaba.csp.sentinel.slots.system.SystemRule;
-
 import java.util.Date;
 
-public class SystemRuleEntity implements RuleEntity {
+import com.alibaba.csp.sentinel.slots.system.SystemRule;
 
-    private Long id;
+public class SystemRuleEntity extends RuleEntity {
 
     private String app;
     private String instanceId;
@@ -19,7 +17,7 @@ public class SystemRuleEntity implements RuleEntity {
 
     private Date gmtCreate;
     private Date gmtModified;
-
+    
     public static SystemRuleEntity fromSystemRule(String app, SystemRule rule) {
         SystemRuleEntity entity = new SystemRuleEntity();
         entity.setApp(app);
@@ -29,16 +27,6 @@ public class SystemRuleEntity implements RuleEntity {
         entity.setMaxThread(rule.getMaxThread());
         entity.setQps(rule.getQps());
         return entity;
-    }
-
-    @Override
-    public Long getId() {
-        return id;
-    }
-
-    @Override
-    public void setId(Long id) {
-        this.id = id;
     }
 
     @Override
@@ -99,7 +87,6 @@ public class SystemRuleEntity implements RuleEntity {
         this.highestCpuUsage = highestCpuUsage;
     }
 
-    @Override
     public Date getGmtCreate() {
         return gmtCreate;
     }
@@ -116,7 +103,7 @@ public class SystemRuleEntity implements RuleEntity {
         this.gmtModified = gmtModified;
     }
 
-    @Override
+	@Override
     public SystemRule toRule() {
         SystemRule rule = new SystemRule();
         rule.setHighestSystemLoad(highestSystemLoad);

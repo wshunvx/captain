@@ -26,6 +26,14 @@ import com.google.common.collect.Lists;
 @Transactional(rollbackFor = Exception.class)
 public class UriBiz extends BaseBiz<UriMapper, Uri> {
 
+	public int update(String id, int status) {
+		return mapper.updateStatus(id, status);
+	}
+	
+	public List<Uri> queryAll() {
+		return mapper.queryUriInSvrid();
+	}
+	
     @SuppressWarnings("deprecation")
 	public boolean saveOrUpdate(List<Uri> entityList, int batchSize) {
         Assert.notEmpty(entityList, "error: entityList must not be empty");

@@ -97,6 +97,21 @@ public final class JSONFormatter {
 	}
 	
 	/**
+	 * Converts a JSON String to object representation
+	 * 
+	 * @param <T>
+	 *            Type to be converted
+	 * @param responseString
+	 *            String of the type
+	 * @param e
+	 * 	 Type typeOfSrc = new TypeToken&lt;Collection&lt;Foo&gt;&gt;(){}.getType();
+	 * @return JSON representation
+	 */
+	public static <T> T fromJSON(String responseString, Type clazz) {
+		return GSON.fromJson(responseString, clazz);
+	}
+	
+	/**
 	 * Converts a JSON Element to object representation
 	 * 
 	 * @param <T>

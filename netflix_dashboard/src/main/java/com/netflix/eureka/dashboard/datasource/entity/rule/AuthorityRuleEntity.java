@@ -20,7 +20,7 @@ public class AuthorityRuleEntity extends AbstractRuleEntity<AuthorityRule> {
         return entity;
     }
 
-    @JsonIgnore
+	@JsonIgnore
     public String getLimitApp() {
         return rule.getLimitApp();
     }

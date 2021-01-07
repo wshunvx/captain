@@ -8,6 +8,7 @@ import com.alibaba.csp.sentinel.Entry;
 import com.alibaba.csp.sentinel.Tracer;
 import com.alibaba.csp.sentinel.context.ContextUtil;
 import com.alibaba.csp.sentinel.log.RecordLog;
+import com.netflix.eureka.command.CommandResponse;
 import com.netflix.eureka.http.constants.ZuulConstant;
 import com.netflix.eureka.http.utils.EntryUtils;
 import com.netflix.zuul.context.RequestContext;
@@ -45,7 +46,7 @@ public class ZuulErrorFilter extends SendErrorFilter {
 	            ExceptionHolder exception = findZuulException(ctx.getThrowable());
 	            String errMsg = exception.getErrorCause();
 	            if(errMsg != null) {
-	            	ctx.setResponseBody(errMsg);
+	            	ctx.setResponseBody(CommandResponse.ofFailure(500, errMsg).toString());
 	            }
 	            ctx.setResponseStatusCode(exception.getStatusCode());
 	        } else {

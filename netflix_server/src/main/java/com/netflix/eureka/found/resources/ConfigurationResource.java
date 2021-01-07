@@ -27,7 +27,7 @@ public class ConfigurationResource {
 		builder.withBase("1000100110200002", "gen-demo");
 		List<Configinfo> list = new ArrayList<>();
 		list.add(builder.build());
-		return new Restresult<List<Configinfo>>(list);
+		return Restresult.ofSuccess(list);
     }
 	
 	@PUT

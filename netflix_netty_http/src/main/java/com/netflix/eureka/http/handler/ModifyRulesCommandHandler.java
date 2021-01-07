@@ -22,6 +22,7 @@ import com.alibaba.csp.sentinel.slots.block.flow.FlowRuleManager;
 import com.alibaba.csp.sentinel.slots.system.SystemRule;
 import com.alibaba.csp.sentinel.slots.system.SystemRuleManager;
 import com.alibaba.csp.sentinel.util.StringUtil;
+import com.netflix.eureka.command.CommandConstants;
 import com.netflix.eureka.command.CommandResponse;
 import com.netflix.eureka.datasource.WritableDataSource;
 import com.netflix.eureka.gson.JSONFormatter;
@@ -45,37 +46,43 @@ public class ModifyRulesCommandHandler {
                 return CommandResponse.ofFailure("decode rule data error");
             }
         }
-
         RecordLog.info("Receiving rule change (type: {}): {}", type, data);
 
-        String result = "success";
-
+        String result = CommandConstants.MSG_SUCCESS;
         if (FLOW_RULE_TYPE.equalsIgnoreCase(type)) {
-        	List<FlowRule> flowRules = JSONFormatter.fromList(data, FlowRule.class);
-            FlowRuleManager.loadRules(flowRules);
-            if (!writeToDataSource(getFlowDataSource(), flowRules)) {
-                result = WRITE_DS_FAILURE_MSG;
-            }
+        	List<FlowRule> rules = JSONFormatter.fromList(data, FlowRule.class);
+        	if(rules != null) {
+        		FlowRuleManager.loadRules(rules);
+                if (!writeToDataSource(getFlowDataSource(), rules)) {
+                    result = WRITE_DS_FAILURE_MSG;
+                }
+        	}
             return CommandResponse.ofSuccess(result);
         } else if (AUTHORITY_RULE_TYPE.equalsIgnoreCase(type)) {
             List<AuthorityRule> rules = JSONFormatter.fromList(data, AuthorityRule.class);
-            AuthorityRuleManager.loadRules(rules);
-            if (!writeToDataSource(getAuthorityDataSource(), rules)) {
-                result = WRITE_DS_FAILURE_MSG;
+            if(rules != null) {
+            	AuthorityRuleManager.loadRules(rules);
+                if (!writeToDataSource(getAuthorityDataSource(), rules)) {
+                    result = WRITE_DS_FAILURE_MSG;
+                }
             }
             return CommandResponse.ofSuccess(result);
         } else if (DEGRADE_RULE_TYPE.equalsIgnoreCase(type)) {
             List<DegradeRule> rules = JSONFormatter.fromList(data, DegradeRule.class);
-            DegradeRuleManager.loadRules(rules);
-            if (!writeToDataSource(getDegradeDataSource(), rules)) {
-                result = WRITE_DS_FAILURE_MSG;
+            if(rules != null) {
+            	DegradeRuleManager.loadRules(rules);
+                if (!writeToDataSource(getDegradeDataSource(), rules)) {
+                    result = WRITE_DS_FAILURE_MSG;
+                }
             }
             return CommandResponse.ofSuccess(result);
         } else if (SYSTEM_RULE_TYPE.equalsIgnoreCase(type)) {
             List<SystemRule> rules = JSONFormatter.fromList(data, SystemRule.class);
-            SystemRuleManager.loadRules(rules);
-            if (!writeToDataSource(getSystemSource(), rules)) {
-                result = WRITE_DS_FAILURE_MSG;
+            if(rules != null) {
+            	SystemRuleManager.loadRules(rules);
+                if (!writeToDataSource(getSystemSource(), rules)) {
+                    result = WRITE_DS_FAILURE_MSG;
+                }
             }
             return CommandResponse.ofSuccess(result);
         }

@@ -5,9 +5,8 @@ import java.util.Date;
 import com.alibaba.csp.sentinel.slots.block.flow.ClusterFlowConfig;
 import com.alibaba.csp.sentinel.slots.block.flow.FlowRule;
 
-public class FlowRuleEntity implements RuleEntity {
+public class FlowRuleEntity extends RuleEntity {
 
-    private Long id;
     private String app;
     private String instanceId;
     private String limitApp;
@@ -76,16 +75,6 @@ public class FlowRuleEntity implements RuleEntity {
 		this.instanceId = instanceId;
 	}
     
-    @Override
-    public Long getId() {
-        return id;
-    }
-
-    @Override
-    public void setId(Long id) {
-        this.id = id;
-    }
-
     public String getLimitApp() {
         return limitApp;
     }
@@ -176,7 +165,6 @@ public class FlowRuleEntity implements RuleEntity {
         return this;
     }
 
-    @Override
     public Date getGmtCreate() {
         return gmtCreate;
     }
@@ -193,7 +181,7 @@ public class FlowRuleEntity implements RuleEntity {
         this.gmtModified = gmtModified;
     }
 
-    @Override
+	@Override
     public FlowRule toRule() {
         FlowRule flowRule = new FlowRule();
         flowRule.setCount(this.count);

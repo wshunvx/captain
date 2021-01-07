@@ -1,26 +1,19 @@
 package com.netflix.eureka.dashboard.datasource.entity.gateway;
 
 import java.util.Date;
-import java.util.Objects;
 
 import com.alibaba.csp.sentinel.slots.block.Rule;
 import com.netflix.eureka.common.GatewayFlowRule;
 import com.netflix.eureka.common.GatewayParamFlowItem;
 import com.netflix.eureka.dashboard.datasource.entity.rule.RuleEntity;
 
-public class GatewayFlowRuleEntity implements RuleEntity {
+public class GatewayFlowRuleEntity extends RuleEntity {
 
-    /**闂撮殧鍗曚綅*/
-    /**0-绉�*/
     public static final int INTERVAL_UNIT_SECOND = 0;
-    /**1-鍒�*/
     public static final int INTERVAL_UNIT_MINUTE = 1;
-    /**2-鏃�*/
     public static final int INTERVAL_UNIT_HOUR = 2;
-    /**3-澶�*/
     public static final int INTERVAL_UNIT_DAY = 3;
 
-    private Long id;
     private String app;
     private String instanceId;
 
@@ -41,7 +34,7 @@ public class GatewayFlowRuleEntity implements RuleEntity {
     private Integer maxQueueingTimeoutMs;
 
     private GatewayParamFlowItemEntity paramItem;
-
+    
     public static Long calIntervalSec(Long interval, Integer intervalUnit) {
         switch (intervalUnit) {
             case INTERVAL_UNIT_SECOND:
@@ -140,16 +133,6 @@ public class GatewayFlowRuleEntity implements RuleEntity {
     }
 
     @Override
-    public Long getId() {
-        return id;
-    }
-
-    @Override
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    @Override
     public String getApp() {
         return app;
     }
@@ -167,7 +150,6 @@ public class GatewayFlowRuleEntity implements RuleEntity {
 		this.instanceId = instanceId;
 	}
 
-    @Override
     public Date getGmtCreate() {
         return gmtCreate;
     }
@@ -176,7 +158,7 @@ public class GatewayFlowRuleEntity implements RuleEntity {
         this.gmtCreate = gmtCreate;
     }
 
-    @Override
+	@Override
     public Rule toRule() {
         return null;
     }
@@ -270,35 +252,8 @@ public class GatewayFlowRuleEntity implements RuleEntity {
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) { return true; }
-        if (o == null || getClass() != o.getClass()) { return false; }
-        GatewayFlowRuleEntity that = (GatewayFlowRuleEntity) o;
-        return Objects.equals(id, that.id) &&
-                Objects.equals(app, that.app) &&
-                Objects.equals(gmtCreate, that.gmtCreate) &&
-                Objects.equals(gmtModified, that.gmtModified) &&
-                Objects.equals(resource, that.resource) &&
-                Objects.equals(resourceMode, that.resourceMode) &&
-                Objects.equals(grade, that.grade) &&
-                Objects.equals(count, that.count) &&
-                Objects.equals(interval, that.interval) &&
-                Objects.equals(intervalUnit, that.intervalUnit) &&
-                Objects.equals(controlBehavior, that.controlBehavior) &&
-                Objects.equals(burst, that.burst) &&
-                Objects.equals(maxQueueingTimeoutMs, that.maxQueueingTimeoutMs) &&
-                Objects.equals(paramItem, that.paramItem);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(id, app, gmtCreate, gmtModified, resource, resourceMode, grade, count, interval, intervalUnit, controlBehavior, burst, maxQueueingTimeoutMs, paramItem);
-    }
-
-    @Override
     public String toString() {
         return "GatewayFlowRuleEntity{" +
-                "id=" + id +
                 ", app='" + app + '\'' +
                 ", gmtCreate=" + gmtCreate +
                 ", gmtModified=" + gmtModified +

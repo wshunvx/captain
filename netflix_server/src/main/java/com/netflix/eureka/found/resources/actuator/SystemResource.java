@@ -1,6 +1,7 @@
 package com.netflix.eureka.found.resources.actuator;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
@@ -10,22 +11,24 @@ import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MultivaluedMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.StringUtils;
 
 import com.alibaba.csp.sentinel.util.StringUtil;
 import com.netflix.appinfo.InstanceInfo;
-import com.netflix.eureka.dashboard.client.SentinelApiClient;
+import com.netflix.eureka.command.Resource;
+import com.netflix.eureka.command.Resource.RuleType;
+import com.netflix.eureka.dashboard.client.HttpapiClient;
 import com.netflix.eureka.dashboard.datasource.entity.rule.SystemRuleEntity;
-import com.netflix.eureka.dashboard.repository.rule.RuleRepository;
 import com.netflix.eureka.found.model.Restresult;
-import com.netflix.eureka.found.sentinel.SentinelServerContext;
-import com.netflix.eureka.found.sentinel.SentinelServerContextHolder;
+import com.netflix.eureka.found.repository.RuleRepositoryAdapter;
+import com.netflix.eureka.found.sentinel.ServerContext;
+import com.netflix.eureka.found.sentinel.ServerContextHolder;
 import com.netflix.eureka.registry.PeerAwareInstanceRegistry;
 
 @Path("/{version}/system")
@@ -33,19 +36,19 @@ import com.netflix.eureka.registry.PeerAwareInstanceRegistry;
 public class SystemResource {
     private final Logger logger = LoggerFactory.getLogger(SystemResource.class);
     
-    private SentinelApiClient sentinelApiClient;
+    private HttpapiClient sentinelApiClient;
     private PeerAwareInstanceRegistry instanceRegistry;
-    private RuleRepository<SystemRuleEntity> repository;
+    private RuleRepositoryAdapter<SystemRuleEntity> repository;
 
     @Inject
-    SystemResource(SentinelServerContext serverContext) {
-        this.sentinelApiClient = serverContext.getSentinelApiClient();
+    SystemResource(ServerContext serverContext) {
+        this.sentinelApiClient = serverContext.getHttpapiClient();
         this.instanceRegistry = serverContext.getInstanceRegistry();
         this.repository = serverContext.getSystemRule();
     }
 
     public SystemResource() {
-        this(SentinelServerContextHolder.getSentinel().getServerContext());
+        this(ServerContextHolder.getSecurity().getServerContext());
     }
     
     @GET
@@ -55,41 +58,22 @@ public class SystemResource {
         	List<SystemRuleEntity> rules = new ArrayList<SystemRuleEntity>();
         	InstanceInfo instanceInfo = instanceRegistry.getInstanceByAppAndId(app, instanceId);
         	if(instanceInfo != null) {
-        		List<SystemRuleEntity> list = sentinelApiClient.fetchSystemRuleOfMachine(app, instanceInfo.getHomePageUrl());
-        		if(list != null) {
+        		Collection<SystemRuleEntity> list = repository.getRule(new Resource(RuleType.SYSTEM_RULE_TYPE, instanceId));
+        		if(list == null || list.isEmpty()) {
+        			list = sentinelApiClient.fetchSystemRuleOfMachine(instanceInfo.getAppName(), instanceInfo.getHomePageUrl());
+        			if(list != null) {
+                    	rules.addAll(list);
+                    }
+                    repository.setRule(new Resource(RuleType.SYSTEM_RULE_TYPE, instanceId), rules);
+        		} else {
         			rules.addAll(list);
-            	}
-        		repository.saveAll(rules);
+        		}
         	}
-            return new Restresult<>(rules);
+            return Restresult.ofSuccess(rules);
         } catch (Throwable throwable) {
             logger.error("Query machine system rules error", throwable);
             return errorResponse(throwable);
         }
-    }
-
-    @PUT
-    public Restresult<SystemRuleEntity> apiNew(
-    		@QueryParam("app") String app, 
-    		@QueryParam("instanceId") String instanceId, 
-    		MultivaluedMap<String, String> queryParams) {
-    	SystemRuleEntity entity = inEntityInternal(queryParams);
-        try {
-        	InstanceInfo instanceInfo = instanceRegistry.getInstanceByAppAndId(app, instanceId);
-        	if(instanceInfo != null) {
-        		entity.setApp(app);
-        		entity.setInstanceId(instanceId);
-        		entity.setGmtCreate(new Date());
-        		repository.save(entity);
-        		boolean status = publishRules(entity.getApp(), instanceInfo.getHomePageUrl());
-        		logger.warn("Publish system rules failed, app={} | {}", entity.getApp(), status);
-        	}
-        } catch (Throwable throwable) {
-            logger.error("Add SystemRule error", throwable);
-            return errorResponse(throwable);
-        }
-        
-        return new Restresult<>(entity);
     }
 
     @POST
@@ -104,38 +88,75 @@ public class SystemResource {
         		entity.setApp(app);
         		entity.setInstanceId(instanceId);
         		entity.setGmtModified(new Date());
-        		repository.save(entity);
-        		boolean status = publishRules(entity.getApp(), instanceInfo.getHomePageUrl());
-        		logger.warn("Publish system rules failed, app={} | {}", entity.getApp(), status);
+        		if(repository.setRule(new Resource(RuleType.SYSTEM_RULE_TYPE, instanceId), entity)) {
+        			boolean status = publishRules(instanceId, instanceInfo.getHomePageUrl());
+            		if(!status) {
+            			logger.warn("Publish degrade rules failed, app={} | {}", app, status);
+            		}
+        		}
         	}
         } catch (Throwable throwable) {
             logger.error("save error:", throwable);
             return errorResponse(throwable);
         }
         
-        return new Restresult<>(entity);
+        return Restresult.ofSuccess(entity);
+    }
+    
+    @PUT
+    public Restresult<SystemRuleEntity> apiUpdate(
+    		@QueryParam("app") String app, 
+    		@QueryParam("instanceId") String instanceId, 
+    		MultivaluedMap<String, String> queryParams) {
+        try {
+        	SystemRuleEntity entity = inEntityInternal(queryParams);
+        	if(StringUtils.isEmpty(entity.getId())) {
+        		return Restresult.ofFailure(-1, "Unable to get the value of id.");
+        	}
+        	InstanceInfo instanceInfo = instanceRegistry.getInstanceByAppAndId(app, instanceId);
+        	if(instanceInfo != null) {
+        		entity.setApp(app);
+        		entity.setInstanceId(instanceId);
+        		entity.setGmtCreate(new Date());
+        		if(repository.setRule(new Resource(RuleType.SYSTEM_RULE_TYPE, instanceId), entity)) {
+        			boolean status = publishRules(instanceId, instanceInfo.getHomePageUrl());
+        			if(!status) {
+        				logger.warn("Publish degrade rules failed, app={} | {}", app, status);
+        			}
+        		}
+        	}
+        	return Restresult.ofSuccess(entity);
+        } catch (Throwable throwable) {
+            logger.error("Add SystemRule error", throwable);
+            return errorResponse(throwable);
+        }
     }
 
     @DELETE
-    @Path("{id}")
-    public Restresult<Long> apiDelete(@PathParam("id") Long id, @QueryParam("app") String app, @QueryParam("instanceId") String instanceId) {
+    public Restresult<String> apiDelete(@QueryParam("app") String app, @QueryParam("instanceId") String instanceId,
+    		@QueryParam("id") Long id) {
         try {
-        	SystemRuleEntity oldEntity = repository.delete(app, id);
-            if (oldEntity == null) {
-                return new Restresult<>(null);
-            }
+        	SystemRuleEntity entity = repository.getRule(new Resource(RuleType.SYSTEM_RULE_TYPE, instanceId), id);
+        	if(entity == null) {
+        		return Restresult.ofFailure(-1, "Unable to get the value of id.");
+        	}
         	InstanceInfo instanceInfo = instanceRegistry.getInstanceByAppAndId(app, instanceId);
         	if(instanceInfo != null) {
-        		if (!publishRules(oldEntity.getApp(), instanceInfo.getHomePageUrl())) {
-                    logger.info("publish system rules fail after rule delete");
-                }
+        		boolean remove = repository.removeRule(new Resource(RuleType.SYSTEM_RULE_TYPE, instanceId), entity);
+        		if(remove) {
+        			boolean status = publishRules(instanceId, instanceInfo.getHomePageUrl());
+            		if(!status) {
+            			repository.setRule(new Resource(RuleType.SYSTEM_RULE_TYPE, instanceId), entity);
+            			logger.warn("Publish degrade rules failed, app={} | {}", app, status);
+            		}
+        		}
         	}
         } catch (Throwable throwable) {
             logger.error("delete error:", throwable);
             return errorResponse(throwable);
         }
         
-        return new Restresult<>(id);
+        return Restresult.ofSuccess("Ok");
     }
 
     private SystemRuleEntity inEntityInternal(MultivaluedMap<String, String> queryParams) {
@@ -166,11 +187,11 @@ public class SystemResource {
     }
     
     private <T> Restresult<T> errorResponse(Throwable ex) {
-        return new Restresult<>(-1, ex.getClass().getName() + ", " + ex.getMessage());
+        return Restresult.ofFailure(-1, ex.getClass().getName() + ", " + ex.getMessage());
     }
     
-    private boolean publishRules(String app, String homePage) {
-        List<SystemRuleEntity> rules = repository.findAllByApp(app);
-        return sentinelApiClient.setSystemRuleOfMachine(app, homePage, rules);
+    private boolean publishRules(String instanceId, String homePage) {
+        Collection<SystemRuleEntity> rules = repository.getRule(new Resource(RuleType.SYSTEM_RULE_TYPE, instanceId));
+        return sentinelApiClient.setSystemRuleOfMachine(homePage, rules);
     }
 }

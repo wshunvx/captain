@@ -1,22 +1,21 @@
 package com.netflix.eureka.http.handler;
 
+import static com.netflix.eureka.transport.util.WritableDataSourceRegistry.getApiDefinitionWds;
+
 import java.net.URLDecoder;
 import java.util.List;
 
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
 import org.springframework.boot.actuate.endpoint.annotation.WriteOperation;
 import org.springframework.cloud.netflix.zuul.filters.ZuulProperties.ZuulRoute;
-
-import static com.netflix.eureka.transport.util.WritableDataSourceRegistry.getApiDefinitionWds;
+import org.springframework.util.StringUtils;
 
 import com.alibaba.csp.sentinel.log.RecordLog;
-import com.alibaba.csp.sentinel.util.StringUtil;
+import com.netflix.eureka.command.CommandConstants;
 import com.netflix.eureka.command.CommandResponse;
 import com.netflix.eureka.common.ApiDefinition;
-import com.netflix.eureka.common.ApiPathPredicateItem;
 import com.netflix.eureka.datasource.WritableDataSource;
 import com.netflix.eureka.gson.JSONFormatter;
-import com.netflix.eureka.http.api.zuul.GatewayApiDefinitionManager;
 import com.netflix.eureka.http.cache.IRouteCache;
 
 @Endpoint(id = "setApiDefinitions")
@@ -42,10 +41,14 @@ public class SetGatewayApiDefinitionGroupCommandHandler {
         String result = SUCCESS_MSG;
 
         List<ApiDefinition> apiDefinitions = JSONFormatter.fromList(data, ApiDefinition.class);
-        GatewayApiDefinitionManager.loadApiDefinitions(apiDefinitions);
         if (writeToDataSource(getApiDefinitionWds(), apiDefinitions)) {
         	for(ApiDefinition api: apiDefinitions) {
-        		zuulCache.addRoute(zuulRoute(api));
+        		int status = api.getStatus();
+        		if(status == 0 || status == 1) {
+        			zuulCache.addRoute(zuulRoute(api));
+        		}else {
+        			zuulCache.delRoute(api.getPattern());
+        		}
         	}
         } else {
         	result = WRITE_DS_FAILURE_MSG;
@@ -57,16 +60,15 @@ public class SetGatewayApiDefinitionGroupCommandHandler {
     private static final String WRITE_DS_FAILURE_MSG = "partial success (write data source failed)";
 
     private ZuulRoute zuulRoute(ApiDefinition api) {
-    	ApiPathPredicateItem pathPredicate = api.getPredicateItems();
-    	if(pathPredicate == null || StringUtil.isEmpty(pathPredicate.getPattern())) {
-    		return null;
-    	}
-    	
     	ZuulRoute zuul = new ZuulRoute();
 		zuul.setId(api.getApiName());
-    	zuul.setServiceId(api.getServiceId());
-    	zuul.setStripPrefix(true);
-    	
+		String serviceId = api.getServiceId();
+		if(StringUtils.isEmpty(serviceId)) {
+			zuul.setUrl(api.getUrl());
+		} else {
+			zuul.setServiceId(api.getServiceId());
+		}
+		zuul.setPath(api.getPattern());
 //    	switch (pathPredicate.getMatchStrategy()) {
 //        case CommandConstants.URL_MATCH_STRATEGY_REGEX:
 //        	zuul.setPath(pathPredicate.getPattern());
@@ -75,7 +77,7 @@ public class SetGatewayApiDefinitionGroupCommandHandler {
 //        default:
 //        	zuul.setPath(pathPredicate.getPattern());
 //    	}
-    	zuul.setPath(pathPredicate.getPattern());
+    	zuul.setStripPrefix(api.getStripPrefix() == CommandConstants.STRIP_PREFIX_ROUTE_TRUE);
     	return zuul;
 	}
     

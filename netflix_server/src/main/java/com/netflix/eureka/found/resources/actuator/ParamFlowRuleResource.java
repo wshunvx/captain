@@ -1,35 +1,36 @@
 package com.netflix.eureka.found.resources.actuator;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 import javax.inject.Inject;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MultivaluedMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.StringUtils;
 
 import com.alibaba.csp.sentinel.util.StringUtil;
 import com.netflix.appinfo.InstanceInfo;
+import com.netflix.eureka.command.Resource;
+import com.netflix.eureka.command.Resource.RuleType;
 import com.netflix.eureka.common.ParamFlowClusterConfig;
 import com.netflix.eureka.common.ParamFlowItem;
 import com.netflix.eureka.common.ParamFlowRule;
-import com.netflix.eureka.dashboard.client.CommandNotFoundException;
-import com.netflix.eureka.dashboard.client.SentinelApiClient;
+import com.netflix.eureka.dashboard.client.HttpapiClient;
 import com.netflix.eureka.dashboard.datasource.entity.rule.ParamFlowRuleEntity;
-import com.netflix.eureka.dashboard.repository.rule.RuleRepository;
 import com.netflix.eureka.found.model.Restresult;
-import com.netflix.eureka.found.sentinel.SentinelServerContext;
-import com.netflix.eureka.found.sentinel.SentinelServerContextHolder;
+import com.netflix.eureka.found.repository.RuleRepositoryAdapter;
+import com.netflix.eureka.found.sentinel.ServerContext;
+import com.netflix.eureka.found.sentinel.ServerContextHolder;
 import com.netflix.eureka.gson.JSONFormatter;
 import com.netflix.eureka.registry.PeerAwareInstanceRegistry;
 
@@ -39,50 +40,44 @@ public class ParamFlowRuleResource {
 
     private final Logger logger = LoggerFactory.getLogger(ParamFlowRuleResource.class);
 
-    private SentinelApiClient sentinelApiClient;
+    private HttpapiClient sentinelApiClient;
     private PeerAwareInstanceRegistry instanceRegistry;
-    private RuleRepository<ParamFlowRuleEntity> repository;
+    private RuleRepositoryAdapter<ParamFlowRuleEntity> repository;
 
     @Inject
-    ParamFlowRuleResource(SentinelServerContext serverContext) {
-        this.sentinelApiClient = serverContext.getSentinelApiClient();
+    ParamFlowRuleResource(ServerContext serverContext) {
+        this.sentinelApiClient = serverContext.getHttpapiClient();
         this.instanceRegistry = serverContext.getInstanceRegistry();
         this.repository = serverContext.getParamFlowRule();
     }
 
     public ParamFlowRuleResource() {
-        this(SentinelServerContextHolder.getSentinel().getServerContext());
+        this(ServerContextHolder.getSecurity().getServerContext());
     }
     
     @GET
     public Restresult<List<ParamFlowRuleEntity>> apiQueryRules(@QueryParam("app") String app,
     		@QueryParam("instanceId") String instanceId) {
         try {
+        	List<ParamFlowRuleEntity> rules = new ArrayList<ParamFlowRuleEntity>();
         	InstanceInfo instanceInfo = instanceRegistry.getInstanceByAppAndId(app, instanceId);
         	if(instanceInfo != null) {
-        		return sentinelApiClient.fetchParamFlowRulesOfMachine(app, instanceInfo.getHomePageUrl())
-        				.thenApply(e -> {
-        					repository.saveAll(e);
-        					return new Restresult<>(e);
-        				})
-        				.get();
+        		Collection<ParamFlowRuleEntity> list = repository.getRule(new Resource(RuleType.PARAM_RULE_TYPE, instanceId));
+        		if(list == null || list.isEmpty()) {
+        			list = sentinelApiClient.fetchParamFlowRulesOfMachine(instanceInfo.getAppName(), instanceInfo.getHomePageUrl()).get();
+        			if(list != null) {
+                    	rules.addAll(list);
+                    }
+                    repository.setRule(new Resource(RuleType.PARAM_RULE_TYPE, instanceId), rules);
+        		} else {
+        			rules.addAll(list);
+        		}
         	}
-            return new Restresult<List<ParamFlowRuleEntity>>();
-        } catch (ExecutionException ex) {
-            logger.error("Error when querying parameter flow rules", ex.getCause());
-            if (isNotSupported(ex.getCause())) {
-                return unsupportedVersion();
-            } else {
-                return errorResponse(ex.getCause());
-            }
+            return Restresult.ofSuccess(rules);
         } catch (Throwable throwable) {
             logger.error("Error when querying parameter flow rules", throwable);
-            return new Restresult<>(-1, throwable.getMessage());
+            return Restresult.ofFailure(-1, throwable.getMessage());
         }
-    }
-
-    private boolean isNotSupported(Throwable ex) {
-        return ex instanceof CommandNotFoundException;
     }
 
     @Deprecated
@@ -97,20 +92,17 @@ public class ParamFlowRuleResource {
         		entity.setApp(app);
         		entity.setInstanceId(instanceId);
         		entity.setGmtCreate(new Date());
-        		repository.save(entity);
-        		publishRules(entity.getApp(), instanceInfo.getHomePageUrl()).get();
+        		if(repository.setRule(new Resource(RuleType.PARAM_RULE_TYPE, instanceId), entity)) {
+        			boolean status = publishRules(instanceId, instanceInfo.getHomePageUrl());
+        			if(!status) {
+        				logger.warn("Publish degrade rules failed, app={} | {}", app, status);
+        			}
+        		}
         	}
-            return new Restresult<>(entity);
-        } catch (ExecutionException ex) {
-            logger.error("Error when adding new parameter flow rules", ex.getCause());
-            if (isNotSupported(ex.getCause())) {
-                return unsupportedVersion();
-            } else {
-                return errorResponse(ex.getCause());
-            }
+            return Restresult.ofSuccess(entity);
         } catch (Throwable throwable) {
             logger.error("Error when adding new parameter flow rules", throwable);
-            return new Restresult<>(-1, throwable.getMessage());
+            return Restresult.ofFailure(-1, throwable.getMessage());
         }
     }
 
@@ -119,54 +111,53 @@ public class ParamFlowRuleResource {
     		@QueryParam("app") String app, 
     		@QueryParam("instanceId") String instanceId, 
     		MultivaluedMap<String, String> queryParams) {
-    	ParamFlowRuleEntity entity = new ParamFlowRuleEntity(inEntityInternal(queryParams));
         try {
+        	ParamFlowRuleEntity entity = new ParamFlowRuleEntity(inEntityInternal(queryParams));
+        	if(StringUtils.isEmpty(entity.getId())) {
+        		return Restresult.ofFailure(-1, "Unable to get the value of id.");
+        	}
         	InstanceInfo instanceInfo = instanceRegistry.getInstanceByAppAndId(app, instanceId);
         	if(instanceInfo != null) {
         		entity.setApp(app);
         		entity.setInstanceId(instanceId);
         		entity.setGmtModified(new Date());
-        		repository.save(entity);
-        		publishRules(entity.getApp(), instanceInfo.getHomePageUrl()).get();
-        		
+        		if(repository.setRule(new Resource(RuleType.PARAM_RULE_TYPE, instanceId), entity)) {
+        			boolean status = publishRules(instanceId, instanceInfo.getHomePageUrl());
+        			if(!status) {
+        				logger.warn("Publish degrade rules failed, app={} | {}", app, status);
+        			}
+        		}
         	}
-            return new Restresult<>(entity);
-        } catch (ExecutionException ex) {
-            logger.error("Error when updating parameter flow rules, id=" + entity.getId(), ex.getCause());
-            if (isNotSupported(ex.getCause())) {
-                return unsupportedVersion();
-            } else {
-                return errorResponse(ex.getCause());
-            }
+            return Restresult.ofSuccess(entity);
         } catch (Throwable throwable) {
-            logger.error("Error when updating parameter flow rules, id=" + entity.getId(), throwable);
-            return new Restresult<>(-1, throwable.getMessage());
+            logger.error("Error when updating parameter flow rules, app=" + app, throwable);
+            return Restresult.ofFailure(-1, throwable.getMessage());
         }
     }
 
     @DELETE
-    @Path("{id}")
-    public Restresult<Long> apiDeleteRule(@PathParam("id") Long id, @QueryParam("app") String app, @QueryParam("instanceId") String instanceId) {
+    public Restresult<String> apiDeleteRule(@QueryParam("app") String app, @QueryParam("instanceId") String instanceId,
+    		@QueryParam("id") Long id) {
         try {
-        	ParamFlowRuleEntity oldEntity = repository.delete(app, id);
-            if (oldEntity == null) {
-                return new Restresult<>(null);
-            }
+        	ParamFlowRuleEntity entity = repository.getRule(new Resource(RuleType.PARAM_RULE_TYPE, instanceId), id);
+        	if(entity == null) {
+        		return Restresult.ofFailure(-1, "Unable to get the value of id.");
+        	}
         	InstanceInfo instanceInfo = instanceRegistry.getInstanceByAppAndId(app, instanceId);
         	if(instanceInfo != null) {
-        		publishRules(oldEntity.getApp(), instanceInfo.getHomePageUrl()).get();
+        		boolean remove = repository.removeRule(new Resource(RuleType.PARAM_RULE_TYPE, instanceId), entity);
+        		if(remove) {
+        			boolean status = publishRules(instanceId, instanceInfo.getHomePageUrl());
+            		if(!status) {
+            			repository.setRule(new Resource(RuleType.FLOW_RULE_TYPE, instanceId), entity);
+            			logger.warn("Publish degrade rules failed, app={} | {}", app, status);
+            		}
+        		}
         	}
-            return new Restresult<>(id);
-        } catch (ExecutionException ex) {
-            logger.error("Error when deleting parameter flow rules", ex.getCause());
-            if (isNotSupported(ex.getCause())) {
-                return unsupportedVersion();
-            } else {
-                return errorResponse(ex.getCause());
-            }
+            return Restresult.ofSuccess("Ok");
         } catch (Throwable throwable) {
             logger.error("Error when deleting parameter flow rules", throwable);
-            return new Restresult<>(-1, throwable.getMessage());
+            return Restresult.ofFailure(-1, throwable.getMessage());
         }
     }
     
@@ -217,18 +208,9 @@ public class ParamFlowRuleResource {
         return entity;
     }
     
-    private <T> Restresult<T> errorResponse(Throwable ex) {
-        return new Restresult<>(-1, ex.getClass().getName() + ", " + ex.getMessage());
-    }
-
-    private CompletableFuture<Void> publishRules(String app, String homePage) {
-        List<ParamFlowRuleEntity> rules = repository.findAllByApp(app);
-        return sentinelApiClient.setParamFlowRuleOfMachine(app, homePage, rules);
-    }
-
-    private <R> Restresult<R> unsupportedVersion() {
-        return new Restresult<>(4041,
-            "Sentinel client not supported for parameter flow control (unsupported version or dependency absent)");
+    private boolean publishRules(String instanceId, String homePage) {
+        Collection<ParamFlowRuleEntity> rules = repository.getRule(new Resource(RuleType.PARAM_RULE_TYPE, instanceId));
+        return sentinelApiClient.setParamRuleOfMachine(homePage, rules);
     }
 
 }

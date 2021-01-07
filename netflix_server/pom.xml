@@ -3,9 +3,9 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>com.genj.captain</groupId>
+		<groupId>com.github.wshunvx</groupId>
 	    <artifactId>service-parent</artifactId>
-	    <version>0.0.1.SNAPSHOT</version>
+	    <version>1.0.20201210</version>
 	</parent>
 	
 	<groupId>com.house</groupId>
@@ -45,9 +45,9 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 		</dependency>
 		<dependency>
-		    <groupId>com.genj.captain</groupId>
+		    <groupId>com.github.wshunvx</groupId>
 		    <artifactId>netflix_dashboard</artifactId>
-		    <version>0.0.1.SNAPSHOT</version>
+		    <version>1.0.20201210</version>
 		</dependency>
 	</dependencies>
 

@@ -8,7 +8,7 @@ import org.springframework.context.SmartLifecycle;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 
-import com.netflix.eureka.found.sentinel.SentinelServerContext;
+import com.netflix.eureka.found.sentinel.ServerContext;
 
 @Configuration(proxyBeanMethods = false)
 public class WebServerInitializerConfiguration implements SmartLifecycle, Ordered {
@@ -18,7 +18,7 @@ public class WebServerInitializerConfiguration implements SmartLifecycle, Ordere
 	private int order = 1;
 	
 	@Autowired
-	private SentinelServerContext serverContext;
+	private ServerContext serverContext;
 	
 	@Override
 	public void start() {

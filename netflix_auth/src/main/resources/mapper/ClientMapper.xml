@@ -1,17 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
 <mapper namespace="com.gen.auth.server.mapper.ClientMapper" >
-  <resultMap id="BaseResultMap" type="com.gen.auth.server.entity.Client" >
-    <!--
-      WARNING - @mbg.generated
-    -->
-    <id column="id" property="id" jdbcType="CHAR" />
-    <result column="instanceId" property="instanceId" jdbcType="CHAR" />
-    <result column="secret" property="secret" jdbcType="VARCHAR" />
-    <result column="name" property="name" jdbcType="VARCHAR" />
-    <result column="locked" property="locked" jdbcType="CHAR" />
-    <result column="description" property="description" jdbcType="VARCHAR" />
-  </resultMap>
+  <select id="findByInstanceId" resultType="com.netflix.eureka.bean.ZClient">
+	SELECT 
+	  ac.id, ac.instance_id, ac.svrid, ac.name, ac.secret, ac.port, ai.zone, ai.hostname, ai.groupname,ai.ipaddr,ac.ts 
+	FROM auth_client ac JOIN auth_instance ai ON ac.instance_id = ai.id WHERE ac.id = #{instanceId} LIMIT 1
+  </select>
   
   <update id="updateTs" parameterType="com.gen.auth.server.entity.Client">
 	UPDATE auth_client SET ts = #{ts} WHERE id = #{id}

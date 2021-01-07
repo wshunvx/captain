@@ -8,6 +8,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import org.springframework.boot.autoconfigure.AutoConfigurationPackage;
+import org.springframework.cloud.netflix.zuul.ZuulProxyMarkerConfiguration;
 import org.springframework.context.annotation.Import;
 
 
@@ -16,7 +17,7 @@ import org.springframework.context.annotation.Import;
 @Documented
 @Inherited
 @AutoConfigurationPackage
-@Import(ZuulHttpConfiguration.class)
+@Import({ZuulHttpConfiguration.class, ZuulProxyMarkerConfiguration.class})
 public @interface ZuulHttpServer {
 	/**
 	 * Exclude specific auto-configuration classes such that they will never be applied.

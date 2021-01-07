@@ -4,9 +4,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-		<groupId>com.genj.captain</groupId>
+		<groupId>com.github.wshunvx</groupId>
 		<artifactId>service-parent</artifactId>
-		<version>0.0.1.SNAPSHOT</version>
+		<version>1.0.20201210</version>
 	</parent>
 
     <artifactId>netflix_dashboard</artifactId>
@@ -44,9 +44,9 @@
             <version>4.4.13</version>
         </dependency>
 		<dependency>
-            <groupId>com.genj.captain</groupId>
+            <groupId>com.github.wshunvx</groupId>
             <artifactId>netflix_common</artifactId>
-            <version>0.0.1.SNAPSHOT</version>
+            <version>1.0.20201210</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

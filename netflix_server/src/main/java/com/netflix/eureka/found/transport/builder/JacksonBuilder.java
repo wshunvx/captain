@@ -21,6 +21,6 @@ public class JacksonBuilder<T> {
     }
 
     public Restresult<T> build() {
-    	return new Restresult<T>(data);
+    	return Restresult.ofSuccess(data);
     }
 }

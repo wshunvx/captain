@@ -8,9 +8,7 @@ import org.springframework.cloud.netflix.eureka.server.event.EurekaInstanceRenew
 import org.springframework.cloud.netflix.eureka.server.event.EurekaRegistryAvailableEvent;
 import org.springframework.cloud.netflix.eureka.server.event.EurekaServerStartedEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.stereotype.Component;
 
-@Component
 public class EurekaStateChangeListener {
 	private static Logger log = LoggerFactory.getLogger(EurekaStateChangeListener.class);
 	

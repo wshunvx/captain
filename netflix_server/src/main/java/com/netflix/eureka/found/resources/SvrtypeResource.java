@@ -6,8 +6,8 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Response;
 
-import com.netflix.eureka.found.sentinel.SentinelServerContext;
-import com.netflix.eureka.found.sentinel.SentinelServerContextHolder;
+import com.netflix.eureka.found.sentinel.ServerContext;
+import com.netflix.eureka.found.sentinel.ServerContextHolder;
 import com.netflix.eureka.found.transport.AuthHttpClient;
 
 @Path("/{version}/svrtype")
@@ -17,12 +17,12 @@ public class SvrtypeResource {
 	private final AuthHttpClient httpClient;
 	
 	@Inject
-	SvrtypeResource(SentinelServerContext serverContext) {
+	SvrtypeResource(ServerContext serverContext) {
         this.httpClient = serverContext.getAuthHttpClient();
     }
 
     public SvrtypeResource() {
-        this(SentinelServerContextHolder.getSentinel().getServerContext());
+        this(ServerContextHolder.getSecurity().getServerContext());
     }
     
 	@GET

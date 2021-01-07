@@ -19,6 +19,11 @@ public class IRouteLocator extends SimpleRouteLocator implements IRouteCache {
 		this.properties = properties;
 	}
 	
+	@Override
+	public Map<String, ZuulRoute> getLocateRoutes() {
+		return locateRoutes();
+	}
+
 	public void addRoute(String path, String location) {
 		this.properties.getRoutes().put(path, new ZuulRoute(path, location));
 		refresh();
@@ -29,6 +34,12 @@ public class IRouteLocator extends SimpleRouteLocator implements IRouteCache {
 		refresh();
 	}
 	
+	@Override
+	public void delRoute(String path) {
+		this.properties.getRoutes().remove(path);
+		refresh();
+	}
+
 	protected void addConfiguredRoutes(Map<String, ZuulRoute> routes) {
 		Map<String, ZuulRoute> routeEntries = this.properties.getRoutes();
 		for (ZuulRoute entry : routeEntries.values()) {

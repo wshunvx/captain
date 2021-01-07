@@ -20,11 +20,11 @@ public class ConfigurationAppResource {
 		Configinfo.Builder builder = Configinfo.Builder.newBuilder();
 		builder.withBase(appId, "gen-demo");
 		builder.inGroup("DEMO").inContent("# Test");
-		return new Restresult<Configinfo>(builder.build());
+		return Restresult.ofSuccess(builder.build());
 	}
 	
 	@POST
 	public Restresult<String> setConfigInfo() {
-		return new Restresult<String>("Success");
+		return Restresult.ofSuccess("Success");
 	}
 }

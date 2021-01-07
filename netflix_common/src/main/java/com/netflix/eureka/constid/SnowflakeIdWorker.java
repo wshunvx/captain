@@ -1,41 +1,41 @@
 package com.netflix.eureka.constid;
 
 public abstract class SnowflakeIdWorker {
-	/** »úÆ÷idËùÕ¼µÄÎ»Êı */
+	/** æœºå™¨idæ‰€å çš„ä½æ•° */
 	private static final long workerIdBits = 5L;
 
-	/** Êı¾İ±êÊ¶idËùÕ¼µÄÎ»Êı */
+	/** æ•°æ®æ ‡è¯†idæ‰€å çš„ä½æ•° */
 	private static final long datacenterIdBits = 5L;
 
-	/** Ö§³ÖµÄ×î´ó»úÆ÷id£¬½á¹ûÊÇ31 (Õâ¸öÒÆÎ»Ëã·¨¿ÉÒÔºÜ¿ìµÄ¼ÆËã³ö¼¸Î»¶ş½øÖÆÊıËùÄÜ±íÊ¾µÄ×î´óÊ®½øÖÆÊı) */
+	/** æ”¯æŒçš„æœ€å¤§æœºå™¨idï¼Œç»“æœæ˜¯31 (è¿™ä¸ªç§»ä½ç®—æ³•å¯ä»¥å¾ˆå¿«çš„è®¡ç®—å‡ºå‡ ä½äºŒè¿›åˆ¶æ•°æ‰€èƒ½è¡¨ç¤ºçš„æœ€å¤§åè¿›åˆ¶æ•°) */
 	private static final long maxWorkerId = -1L ^ (-1L << workerIdBits);
 
-	/** Ö§³ÖµÄ×î´óÊı¾İ±êÊ¶id£¬½á¹ûÊÇ31 */
+	/** æ”¯æŒçš„æœ€å¤§æ•°æ®æ ‡è¯†idï¼Œç»“æœæ˜¯31 */
 	private static final long maxDatacenterId = -1L ^ (-1L << datacenterIdBits);
 
-	/** ĞòÁĞÔÚidÖĞÕ¼µÄÎ»Êı */
+	/** åºåˆ—åœ¨idä¸­å çš„ä½æ•° */
 	private static final long sequenceBits = 12L;
 
-	/** »úÆ÷IDÏò×óÒÆ12Î» */
+	/** æœºå™¨IDå‘å·¦ç§»12ä½ */
 	private static final long workerIdShift = sequenceBits;
 
-	/** Êı¾İ±êÊ¶idÏò×óÒÆ17Î»(12+5) */
+	/** æ•°æ®æ ‡è¯†idå‘å·¦ç§»17ä½(12+5) */
 	private static final long datacenterIdShift = sequenceBits + workerIdBits;
 
-	/** Ê±¼ä½ØÏò×óÒÆ22Î»(5+5+12) */
+	/** æ—¶é—´æˆªå‘å·¦ç§»22ä½(5+5+12) */
 	private static final long timestampLeftShift = sequenceBits + workerIdBits + datacenterIdBits;
 
-	/** Éú³ÉĞòÁĞµÄÑÚÂë£¬ÕâÀïÎª4095 (0b111111111111=0xfff=4095) */
+	/** ç”Ÿæˆåºåˆ—çš„æ©ç ï¼Œè¿™é‡Œä¸º4095 (0b111111111111=0xfff=4095) */
 	private static final long sequenceMask = -1L ^ (-1L << sequenceBits);
 
 	abstract public long nextId();
 	/**
-	 * ¹¹Ôìº¯Êı
+	 * æ„é€ å‡½æ•°
 	 * 
 	 * @param workerId
-	 *            ¹¤×÷ID (0~31)
+	 *            å·¥ä½œID (0~31)
 	 * @param datacenterId
-	 *            Êı¾İÖĞĞÄID (0~31)
+	 *            æ•°æ®ä¸­å¿ƒID (0~31)
 	 */
 	public static SnowflakeIdWorker newID(long twepoch, long workerId, long datacenterId) {
 		if (workerId > maxWorkerId || workerId < 0) {
@@ -50,17 +50,17 @@ public abstract class SnowflakeIdWorker {
 	}
 
 	public static final class IDWorker extends SnowflakeIdWorker {
-		/** ¿ªÊ¼Ê±¼ä½Ø */
+		/** å¼€å§‹æ—¶é—´æˆª */
 		private long twepoch;
-		/** ¹¤×÷»úÆ÷ID(0~31) */
+		/** å·¥ä½œæœºå™¨ID(0~31) */
 		private long workerId;
-		/** Êı¾İÖĞĞÄID(0~31) */
+		/** æ•°æ®ä¸­å¿ƒID(0~31) */
 		private long datacenterId;
 		
-		/** ºÁÃëÄÚĞòÁĞ(0~4095) */
+		/** æ¯«ç§’å†…åºåˆ—(0~4095) */
 		private long sequence = 0L;
 
-		/** ÉÏ´ÎÉú³ÉIDµÄÊ±¼ä½Ø */
+		/** ä¸Šæ¬¡ç”ŸæˆIDçš„æ—¶é—´æˆª */
 		private long lastTimestamp = -1L;
 		
 		public IDWorker(long twepoch, long workerId, long datacenterId) {
@@ -70,12 +70,12 @@ public abstract class SnowflakeIdWorker {
 		}
 		
 		/**
-		 * »ñµÃÏÂÒ»¸öID (¸Ã·½·¨ÊÇÏß³Ì°²È«µÄ)
+		 * è·å¾—ä¸‹ä¸€ä¸ªID (è¯¥æ–¹æ³•æ˜¯çº¿ç¨‹å®‰å…¨çš„)
 		 * @return SnowflakeId
 		 */
 		public synchronized long produce() {
 			long timestamp = timeGen();
-			// Èç¹ûµ±Ç°Ê±¼äĞ¡ÓÚÉÏÒ»´ÎIDÉú³ÉµÄÊ±¼ä´Á£¬ËµÃ÷ÏµÍ³Ê±ÖÓ»ØÍË¹ıÕâ¸öÊ±ºòÓ¦µ±Å×³öÒì³£
+			// å¦‚æœå½“å‰æ—¶é—´å°äºä¸Šä¸€æ¬¡IDç”Ÿæˆçš„æ—¶é—´æˆ³ï¼Œè¯´æ˜ç³»ç»Ÿæ—¶é’Ÿå›é€€è¿‡è¿™ä¸ªæ—¶å€™åº”å½“æŠ›å‡ºå¼‚å¸¸
 			if (timestamp < lastTimestamp) {
 				throw new RuntimeException(String.format(
 						"Clock moved backwards.  Refusing to generate id for %d milliseconds", lastTimestamp - timestamp));
@@ -108,11 +108,11 @@ public abstract class SnowflakeIdWorker {
 	}
 
 	/**
-	 * ×èÈûµ½ÏÂÒ»¸öºÁÃë£¬Ö±µ½»ñµÃĞÂµÄÊ±¼ä´Á
+	 * é˜»å¡åˆ°ä¸‹ä¸€ä¸ªæ¯«ç§’ï¼Œç›´åˆ°è·å¾—æ–°çš„æ—¶é—´æˆ³
 	 * 
 	 * @param lastTimestamp
-	 *            ÉÏ´ÎÉú³ÉIDµÄÊ±¼ä½Ø
-	 * @return µ±Ç°Ê±¼ä´Á
+	 *            ä¸Šæ¬¡ç”ŸæˆIDçš„æ—¶é—´æˆª
+	 * @return å½“å‰æ—¶é—´æˆ³
 	 */
 	protected long tilNextMillis(long lastTimestamp) {
 		long timestamp = timeGen();
@@ -123,9 +123,9 @@ public abstract class SnowflakeIdWorker {
 	}
 
 	/**
-	 * ·µ»ØÒÔºÁÃëÎªµ¥Î»µÄµ±Ç°Ê±¼ä
+	 * è¿”å›ä»¥æ¯«ç§’ä¸ºå•ä½çš„å½“å‰æ—¶é—´
 	 * 
-	 * @return µ±Ç°Ê±¼ä(ºÁÃë)
+	 * @return å½“å‰æ—¶é—´(æ¯«ç§’)
 	 */
 	protected long timeGen() {
 		return System.currentTimeMillis();

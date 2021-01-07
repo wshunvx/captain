@@ -1,17 +1,18 @@
 spring:
   datasource:
     name: test
-    url: jdbc:mysql://127.0.0.1:3306/ag_auth?useUnicode=true&characterEncoding=UTF-8&serverTimezone=GMT
+    url: jdbc:mysql://127.0.0.1:3306/ag_auth?useUnicode=true&characterEncoding=UTF-8&serverTimezone=CTT
     username: root
     password: 2019
 
 eureka:
   instance:
     version: 1.0
-    hostname: 10.10.10.104
+    hostName: 10.10.10.104
     instanceId: 1000100120000001
     metadataMap:
       zone: 001
+      secret: C6OPBho6/qSGusYMKV0HpC5pzBR3npdLJo1Wf2wL+lbdV2y8Z15+XXu/WhZwA265FJLxYKcCdthoQeV823nshUvQbECgE087gzHU9KexIVN65BXsFeZFjHdJ+egxm9Ci96n7MtUIqsSroNMd+irdBBuFR4vww+qi5My7jM2vR/I=
     appGroupName: auth
   client:
     zone: 001

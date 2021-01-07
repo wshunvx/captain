@@ -1,6 +1,7 @@
 package com.netflix.eureka.found.model;
 
 import com.netflix.discovery.provider.Serializer;
+import com.netflix.eureka.gson.JSONFormatter;
 
 @Serializer
 public class Restresult<R> {
@@ -11,22 +12,42 @@ public class Restresult<R> {
 	
 	public Restresult() {}
     
-	public Restresult(R result) {
-		this(result, 1000, null);
-    }
-	
-	public Restresult(int code, R result) {
-		this(result, code, null);
-    }
-	
-	public Restresult(int code, String desc) {
-		this(null, code, desc);
-    }
-
 	public Restresult(R result, int code, String desc) {
         this.code = code;
         this.data = result;
         this.desc = desc;
+    }
+	
+	/**
+     * Construct a successful response with given object.
+     *
+     * @param result result object
+     * @param <T>    type of the result
+     * @return constructed server response
+     */
+    public static <T> Restresult<T> ofSuccess(T result) {
+        return new Restresult<T>(result, 1000, "");
+    }
+
+    /**
+     * Construct a failed response with given exception.
+     *
+     * @param ex cause of the failure
+     * @return constructed server response
+     */
+    public static <T> Restresult<T> ofFailure(String ex) {
+        return new Restresult<T>(null, 1001, ex);
+    }
+
+    /**
+     * Construct a failed response with given exception.
+     *
+     * @param ex     cause of the failure
+     * @param result additional message of the failure
+     * @return constructed server response
+     */
+    public static <T> Restresult<T> ofFailure(int code, String ex) {
+        return new Restresult<T>(null, code, ex);
     }
 
 	public int getCode() {
@@ -40,4 +61,11 @@ public class Restresult<R> {
 	public String getDesc() {
 		return desc;
 	}
+
+	@Override
+	public String toString() {
+		return JSONFormatter.toJSON(this);
+	}
+	
+	
 }

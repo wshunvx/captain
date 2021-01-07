@@ -20,7 +20,6 @@ import org.springframework.cloud.netflix.zuul.filters.ProxyRequestHelper;
 import org.springframework.cloud.netflix.zuul.filters.route.RibbonCommand;
 import org.springframework.cloud.netflix.zuul.filters.route.RibbonCommandFactory;
 import org.springframework.cloud.netflix.zuul.filters.route.RibbonRoutingFilter;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.ReflectionUtils;
@@ -30,7 +29,6 @@ import com.netflix.eureka.http.constants.ZuulConstant;
 import com.netflix.eureka.http.jwt.IJWTInfo;
 import com.netflix.hystrix.exception.HystrixRuntimeException;
 import com.netflix.zuul.context.RequestContext;
-import com.netflix.zuul.exception.ZuulException;
 
 @SuppressWarnings("rawtypes")
 public class OkHttpRoutingFilter extends RibbonRoutingFilter {

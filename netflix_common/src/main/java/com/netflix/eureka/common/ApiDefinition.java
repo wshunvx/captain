@@ -2,13 +2,20 @@ package com.netflix.eureka.common;
 
 import java.util.Objects;
 
+import com.netflix.eureka.command.CommandConstants;
+
 public class ApiDefinition {
 
 	private String serviceId;
     private String apiName;
     
-    private ApiPathPredicateItem predicateItems;
-
+    private String url;
+    private String pattern;
+    private int stripPrefix = CommandConstants.STRIP_PREFIX_ROUTE_TRUE;
+    private int matchStrategy = CommandConstants.URL_MATCH_STRATEGY_EXACT;
+    
+    private int status = 0; // 0.Insert 1.Update 2.Remove
+    
     public String getServiceId() {
 		return serviceId;
 	}
@@ -17,7 +24,43 @@ public class ApiDefinition {
 		this.serviceId = serviceId;
 	}
 
-    public String getApiName() {
+    public String getUrl() {
+		return url;
+	}
+
+	public void setUrl(String url) {
+		this.url = url;
+	}
+
+	public String getPattern() {
+		return pattern;
+	}
+
+	public void setPattern(String pattern) {
+		this.pattern = pattern;
+	}
+
+	public int getStripPrefix() {
+		return stripPrefix;
+	}
+
+	public void setStripPrefix(int stripPrefix) {
+		this.stripPrefix = stripPrefix;
+	}
+
+	public int getMatchStrategy() {
+		return matchStrategy;
+	}
+
+	public void setMatchStrategy(int matchStrategy) {
+		this.matchStrategy = matchStrategy;
+	}
+
+	public int getStatus() {
+		return status;
+	}
+
+	public String getApiName() {
         return apiName;
     }
 
@@ -26,30 +69,24 @@ public class ApiDefinition {
         return this;
     }
 
-    public ApiPathPredicateItem getPredicateItems() {
-        return predicateItems;
-    }
+    public ApiDefinition setStatus(int status) {
+		this.status = status;
+		return this;
+	}
 
-    public ApiDefinition setPredicateItems(ApiPathPredicateItem predicateItems) {
-        this.predicateItems = predicateItems;
-        return this;
-    }
-
-    @Override
+	@Override
     public boolean equals(Object o) {
         if (this == o) { return true; }
         if (o == null || getClass() != o.getClass()) { return false; }
 
         ApiDefinition that = (ApiDefinition) o;
 
-        if (!Objects.equals(apiName, that.apiName)) { return false; }
-        if (!Objects.equals(serviceId, that.serviceId)) { return false; }
-        return Objects.equals(predicateItems, that.predicateItems);
+        return Objects.equals(apiName, that.apiName) && Objects.equals(serviceId, that.serviceId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(apiName, serviceId, predicateItems);
+        return Objects.hash(apiName, serviceId);
     }
 
     @Override
@@ -57,7 +94,6 @@ public class ApiDefinition {
         return "ApiDefinition{" +
             "apiName='" + apiName + '\'' +
             ", serviceId='" + serviceId + '\'' +
-            ", predicateItems=" + predicateItems +
             '}';
     }
 }

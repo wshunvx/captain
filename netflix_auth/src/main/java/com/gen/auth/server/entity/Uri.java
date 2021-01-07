@@ -1,5 +1,7 @@
 package com.gen.auth.server.entity;
 
+import java.util.Date;
+
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -13,8 +15,11 @@ public class Uri {
     private String id;
 	
 	private String svrid;
+	private Integer strategy;
 	private String basepath;
 	private String method;
 	private String summary;
-	private String description;
+	private Integer status;
+	private Date createtime;
+	private Date updatetime;
 }

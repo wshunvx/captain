@@ -4,14 +4,14 @@ import java.util.Date;
 
 import com.alibaba.csp.sentinel.slots.block.degrade.DegradeRule;
 
-public class DegradeRuleEntity implements RuleEntity {
+public class DegradeRuleEntity extends RuleEntity {
 
-    private Long id;
     private String app;
     private String instanceId;
 
     private String resource;
     private String limitApp;
+    
     private Double count;
     private Integer timeWindow;
     private Integer grade;
@@ -21,7 +21,7 @@ public class DegradeRuleEntity implements RuleEntity {
 
     private Date gmtCreate;
     private Date gmtModified;
-
+    
     public static DegradeRuleEntity fromDegradeRule(String app, DegradeRule rule) {
         DegradeRuleEntity entity = new DegradeRuleEntity();
         entity.setApp(app);
@@ -34,16 +34,6 @@ public class DegradeRuleEntity implements RuleEntity {
         entity.setSlowRatioThreshold(rule.getSlowRatioThreshold());
         entity.setStatIntervalMs(rule.getStatIntervalMs());
         return entity;
-    }
-
-    @Override
-    public Long getId() {
-        return id;
-    }
-
-    @Override
-    public void setId(Long id) {
-        this.id = id;
     }
 
     @Override
@@ -131,7 +121,6 @@ public class DegradeRuleEntity implements RuleEntity {
         return this;
     }
 
-    @Override
     public Date getGmtCreate() {
         return gmtCreate;
     }
@@ -148,7 +137,7 @@ public class DegradeRuleEntity implements RuleEntity {
         this.gmtModified = gmtModified;
     }
 
-    @Override
+	@Override
     public DegradeRule toRule() {
         DegradeRule rule = new DegradeRule();
         rule.setResource(resource);

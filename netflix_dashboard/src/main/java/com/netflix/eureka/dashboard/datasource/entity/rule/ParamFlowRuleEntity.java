@@ -9,7 +9,7 @@ import com.netflix.eureka.common.ParamFlowItem;
 import com.netflix.eureka.common.ParamFlowRule;
 
 public class ParamFlowRuleEntity extends AbstractRuleEntity<ParamFlowRule> {
-
+	
     public ParamFlowRuleEntity() {
     }
 
@@ -24,7 +24,7 @@ public class ParamFlowRuleEntity extends AbstractRuleEntity<ParamFlowRule> {
         return entity;
     }
 
-    @JsonIgnore
+	@JsonIgnore
     public String getLimitApp() {
         return rule.getLimitApp();
     }

@@ -53,7 +53,7 @@ public class ServerViewResource {
             return new Restresult<InstanceInfo>();
         }
 		
-		return new Restresult<InstanceInfo>(instanceInfo);
+		return Restresult.ofSuccess(instanceInfo);
 	}
 	
 	@PUT
@@ -139,6 +139,6 @@ public class ServerViewResource {
         	list.add(builder.build());
         }
 		
-		return new Restresult<List<Serviceinfo>>(list);
+		return Restresult.ofSuccess(list);
     }
 }

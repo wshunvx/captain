@@ -1,5 +1,7 @@
 package com.netflix.eureka.bean;
 
+import com.alibaba.csp.sentinel.util.StringUtil;
+
 public class ZClient {
 	private String id;
 	private String name;
@@ -9,8 +11,13 @@ public class ZClient {
 	
 	private String instanceId;
 	
-	private String path;
+	private String zone;
+	private String groupname;
+	
 	private Integer port;
+	
+	private String ipaddr;
+	private String hostname;
 	
 	private String ts;
 
@@ -62,12 +69,36 @@ public class ZClient {
 		this.port = port;
 	}
 
-	public String getPath() {
-		return path;
+	public String getZone() {
+		return zone;
 	}
 
-	public void setPath(String path) {
-		this.path = path;
+	public String getGroupname() {
+		return groupname;
+	}
+
+	public void setGroupname(String groupname) {
+		this.groupname = groupname;
+	}
+
+	public void setZone(String zone) {
+		this.zone = zone;
+	}
+
+	public String getIpaddr() {
+		return ipaddr;
+	}
+
+	public void setIpaddr(String ipaddr) {
+		this.ipaddr = ipaddr;
+	}
+
+	public String getHostname() {
+		return hostname;
+	}
+
+	public void setHostname(String hostname) {
+		this.hostname = hostname;
 	}
 
 	public String getTs() {
@@ -77,5 +108,50 @@ public class ZClient {
 	public void setTs(String ts) {
 		this.ts = ts;
 	}
+	
+	@Override
+    public boolean equals(Object obj) {
+		if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        ZClient other = (ZClient) obj;
+        if(StringUtil.isEmpty(other.getId()) || StringUtil.isEmpty(other.getHostname())) {
+        	return false;
+        }
+        if(!(other.getId().equals(this.id) && other.getHostname().equals(this.hostname))) {
+        	return false;
+        }
+        Integer svrPort = other.getPort();
+        if(svrPort != null) {
+        	if(!svrPort.equals(this.port)) {
+        		return false;
+        	}
+        }
+        String ipAddr = other.getIpaddr();
+        if(ipAddr != null) {
+        	if(!ipAddr.equals(this.ipaddr)) {
+        		return false;
+        	}
+        }
+        return true;
+	}
+
+	@Override
+	public String toString() {
+		StringBuffer json = new StringBuffer();
+		json.append("{\"hostname\": \"").append(hostname == null ? "" : hostname);
+		json.append("\", \"id\": \"").append(id == null ? "" : id);
+		json.append("\", \"ipaddr\": \"").append(ipaddr == null ? "" : ipaddr);
+		json.append("\", \"port\": \"").append(port == null ? "" : port);
+		json.append("\"}");
+		return json.toString();
+	}
+	
 	
 }

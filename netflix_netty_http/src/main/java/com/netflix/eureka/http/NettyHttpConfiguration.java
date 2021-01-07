@@ -4,6 +4,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.actuate.autoconfigure.endpoint.condition.ConditionalOnAvailableEndpoint;
+import org.springframework.boot.actuate.autoconfigure.endpoint.web.WebEndpointProperties;
+import org.springframework.boot.actuate.web.mappings.servlet.DispatcherServletsMappingDescriptionProvider;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -36,13 +39,14 @@ import com.netflix.eureka.http.handler.FetchTreeCommandHandler;
 import com.netflix.eureka.http.handler.GetParamFlowRulesCommandHandler;
 import com.netflix.eureka.http.handler.ModifyParamFlowRulesCommandHandler;
 import com.netflix.eureka.http.handler.ModifyRulesCommandHandler;
+import com.netflix.eureka.http.handler.ResourceCommandHandler;
 import com.netflix.eureka.http.handler.SendMetricCommandHandler;
 import com.netflix.eureka.http.handler.VersionCommandHandler;
 import com.netflix.eureka.http.handler.cluster.FetchClusterModeCommandHandler;
 import com.netflix.eureka.http.handler.cluster.ModifyClusterModeCommandHandler;
 
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(value = "eureka.sentinel.enabled", matchIfMissing = true)
+@ConditionalOnProperty(value = "eureka.security.enabled", matchIfMissing = true)
 @AutoConfigureBefore(EurekaClientAutoConfiguration.class)
 @EnableConfigurationProperties
 @PropertySource("classpath:/spring.properties")
@@ -143,10 +147,23 @@ public class NettyHttpConfiguration {
 	VersionCommandHandler versionEndpoint() {
 		return new VersionCommandHandler();
 	}
+	
+	@Configuration(proxyBeanMethods = false)
+	@ConditionalOnClass(DispatcherServletsMappingDescriptionProvider.class)
+	static class SpringMvcConfiguration {
 
+		@Bean
+		@ConditionalOnAvailableEndpoint
+		public ResourceCommandHandler resourceCommandHandler(ApplicationContext applicationContext,
+				DispatcherServletsMappingDescriptionProvider descriptionProviders, WebEndpointProperties webEndpointProperties) {
+			return new ResourceCommandHandler(webEndpointProperties.getBasePath(), descriptionProviders, applicationContext);
+		}
+		
+	}
+	
 	@Configuration(proxyBeanMethods = false)
 	@ConditionalOnClass(EurekaClientConfig.class)
-	protected static class EurekaClientConfiguration {
+	static class EurekaClientConfiguration {
 
 		@Autowired
 		private ApplicationContext context;

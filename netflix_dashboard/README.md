@@ -1,4 +1,4 @@
-# Sentinel 控制台
+# Netflix 控制台
 
 ## 0. 概述
 

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.gen.auth.server.mapper.UriMapper" >
+  
+  <select id="queryUriInSvrid" resultType="com.gen.auth.server.entity.Uri">
+  	SELECT u.id,u.basepath,u.method,u.strategy,t.app as svrid,u.createtime,u.updatetime FROM auth_uri u JOIN auth_type t ON u.svrid = t.id WHERE u.status = 0
+  </select>
+  <update id="updateStatus" parameterType="com.gen.auth.server.entity.Uri">
+	UPDATE auth_uri SET status = #{status} WHERE id = #{id}
+  </update>
+</mapper>

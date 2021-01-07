@@ -3,9 +3,9 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.github.captain</groupId>
+    <groupId>com.github.wshunvx</groupId>
     <artifactId>service-parent</artifactId>
-    <version>0.0.1.SNAPSHOT</version>
+    <version>1.0.20201210</version>
     <packaging>pom</packaging>
 
     <name>${project.artifactId}</name>
@@ -71,6 +71,8 @@
 		<module>netflix_auth</module>
         <module>netflix_server</module>
 		<module>netflix_zuul</module>
+		<module>webflux_adapter</module>
+		<module>webmvc_adapter</module>
     </modules>
 
     <dependencyManagement>
@@ -110,6 +112,7 @@
     </dependencyManagement>
 
     <build>
+    	<pluginManagement>
         <plugins>
         	<plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -159,6 +162,7 @@
                 </configuration>
             </plugin>
         </plugins>
+        </pluginManagement>
     </build>
 
     <profiles>
@@ -226,6 +230,16 @@
                     <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
                 </repository>
             </distributionManagement>
+            <!-- distributionManagement>
+                <snapshotRepository>
+                    <id>rdc-snapshots</id>
+                    <url>https://packages.aliyun.com/maven/repository/2056766-snapshot-ky0kiL/</url>
+                </snapshotRepository>
+                <repository>
+                    <id>rdc-releases</id>
+                    <url>https://packages.aliyun.com/maven/repository/2056766-release-bE2Qpq/</url>
+                </repository>
+            </distributionManagement> -->
         </profile>
     </profiles>
 

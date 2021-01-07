@@ -13,3 +13,5 @@ eureka:
     fetchRegistry: false
     serviceUrl:
       defaultZone: http://127.0.0.1:8761/eureka/
+  secret:
+    seed: y2paX#huGp2&vPez54UMRVNyXvlbzT3/b80hLdpsS9%AOSrb4dK

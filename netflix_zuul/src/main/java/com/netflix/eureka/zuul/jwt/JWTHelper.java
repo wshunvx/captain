@@ -6,7 +6,7 @@ import org.joda.time.DateTime;
 
 import com.netflix.eureka.http.constants.ZuulConstant;
 import com.netflix.eureka.http.jwt.IJWTInfo;
-import com.netflix.eureka.zuul.utils.RsaKeyHelper;
+import com.netflix.eureka.security.RsaKeyHelper;
 import com.netflix.eureka.zuul.utils.StringHelper;
 
 import io.jsonwebtoken.Claims;
@@ -21,31 +21,12 @@ public class JWTHelper {
      * 密钥加密token
      *
      * @param jwtInfo
-     * @param priKeyPath
-     * @param expire
-     * @return
-     * @throws Exception
-     */
-    public static String generateToken(IJWTInfo jwtInfo, String priKeyPath, int expire) throws Exception {
-        return Jwts.builder()
-                .setSubject(jwtInfo.getUniqueName())
-                .claim(ZuulConstant.JWT_KEY_ID, jwtInfo.getId())
-                .claim(ZuulConstant.JWT_KEY_METADATA, jwtInfo.getMetadata())
-                .setExpiration(DateTime.now().plusSeconds(expire).toDate())
-                .signWith(SignatureAlgorithm.RS256, rsaKeyHelper.getPrivateKey(priKeyPath))
-                .compact();
-    }
-    
-    /**
-     * 密钥加密token
-     *
-     * @param jwtInfo
      * @param priKey
      * @param expire
      * @return
      * @throws Exception
      */
-    public static String generateToken(String subject, byte priKey[], int expire) throws Exception {
+    public static String generateToken(String subject, byte[] priKey, int expire) throws Exception {
         return Jwts.builder()
                 .setSubject(subject)
                 .setExpiration(DateTime.now().plusSeconds(expire).toDate())
@@ -62,7 +43,7 @@ public class JWTHelper {
      * @return
      * @throws Exception
      */
-    public static String generateToken(IJWTInfo jwtInfo, byte priKey[], int expire) throws Exception {
+    public static String generateToken(IJWTInfo jwtInfo, byte[] priKey, int expire) throws Exception {
         return generateToken(jwtInfo, priKey, DateTime.now().plusSeconds(expire).toDate());
     }
     
@@ -91,35 +72,10 @@ public class JWTHelper {
      * @return
      * @throws Exception
      */
-    public static Jws<Claims> parserToken(String token, String pubKeyPath) throws Exception {
-    	return Jwts.parser().setSigningKey(rsaKeyHelper.getPublicKey(pubKeyPath)).parseClaimsJws(token);
-    }
-    /**
-     * 公钥解析token
-     *
-     * @param token
-     * @return
-     * @throws Exception
-     */
     public static Jws<Claims> parserToken(String token, byte[] pubKey) throws Exception {
         return Jwts.parser().setSigningKey(rsaKeyHelper.getPublicKey(pubKey)).parseClaimsJws(token);
     }
-    /**
-     * 获取token中的用户信息
-     *
-     * @param token
-     * @param pubKeyPath
-     * @return
-     * @throws Exception
-     */
-    public static IJWTInfo getInfoFromToken(String token, String pubKeyPath) throws Exception {
-        Jws<Claims> claimsJws = parserToken(token, pubKeyPath);
-        Claims body = claimsJws.getBody();
-        return new JWTInfo(body.getSubject(), 
-        		StringHelper.getObjectValue(body.get(ZuulConstant.JWT_KEY_ID)), 
-        		StringHelper.getObjectList(body.get(ZuulConstant.JWT_KEY_METADATA))
-        		);
-    }
+    
     /**
      * 获取token中的用户信息
      *

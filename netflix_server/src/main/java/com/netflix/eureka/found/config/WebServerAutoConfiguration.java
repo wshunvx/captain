@@ -1,62 +1,81 @@
 package com.netflix.eureka.found.config;
 
+import javax.annotation.PostConstruct;
+import javax.inject.Inject;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cloud.netflix.eureka.server.EurekaDashboardProperties;
 import org.springframework.cloud.netflix.eureka.server.EurekaServerAutoConfiguration;
+import org.springframework.cloud.netflix.eureka.server.EurekaServerInitializerConfiguration;
+import org.springframework.cloud.netflix.eureka.server.InstanceRegistryProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.PropertySource;
 
-import com.netflix.eureka.dashboard.client.SentinelApiClient;
-import com.netflix.eureka.dashboard.datasource.entity.MetricEntity;
-import com.netflix.eureka.dashboard.datasource.entity.rule.AuthorityRuleEntity;
-import com.netflix.eureka.dashboard.datasource.entity.rule.DegradeRuleEntity;
-import com.netflix.eureka.dashboard.datasource.entity.rule.FlowRuleEntity;
-import com.netflix.eureka.dashboard.datasource.entity.rule.ParamFlowRuleEntity;
-import com.netflix.eureka.dashboard.datasource.entity.rule.SystemRuleEntity;
-import com.netflix.eureka.dashboard.repository.metric.MetricsRepository;
-import com.netflix.eureka.dashboard.repository.rule.RuleRepository;
-import com.netflix.eureka.found.repository.InMemoryRuleRepositoryAdapter;
-import com.netflix.eureka.found.repository.gateway.InMemApiDefinitionStore;
-import com.netflix.eureka.found.repository.gateway.InMemGatewayFlowRuleStore;
-import com.netflix.eureka.found.sentinel.SentinelServerContext;
-import com.netflix.eureka.found.service.SentinelServerImpl;
+import com.netflix.discovery.EurekaClient;
+import com.netflix.discovery.EurekaClientConfig;
+import com.netflix.eureka.EurekaServerConfig;
+import com.netflix.eureka.dashboard.client.HttpapiClient;
+import com.netflix.eureka.found.registry.ProvingInstanceRegistry;
+import com.netflix.eureka.found.registry.SecretProperties;
+import com.netflix.eureka.found.registry.ServiceGenerator;
+import com.netflix.eureka.found.sentinel.ServerContext;
+import com.netflix.eureka.found.service.ServerContextImpl;
 import com.netflix.eureka.registry.PeerAwareInstanceRegistry;
+import com.netflix.eureka.resources.ServerCodecs;
 
 @Configuration(proxyBeanMethods = false)
 @Import(WebServerInitializerConfiguration.class)
-@AutoConfigureAfter(EurekaServerAutoConfiguration.class)
-public class WebServerAutoConfiguration {
+@AutoConfigureAfter(EurekaServerInitializerConfiguration.class)
+@EnableConfigurationProperties({ 
+	EurekaDashboardProperties.class,
+	InstanceRegistryProperties.class,
+	SecretProperties.class})
+@PropertySource("classpath:/eureka/server.properties")
+public class WebServerAutoConfiguration extends EurekaServerAutoConfiguration {
 	
 	@Autowired
-	MetricsRepository<MetricEntity> metric;
+	private EurekaServerConfig eurekaServerConfig;
+
 	@Autowired
-	RuleRepository<SystemRuleEntity> systemRule;
-	@Autowired
-	RuleRepository<DegradeRuleEntity> degradeRule;
-	@Autowired
-	RuleRepository<ParamFlowRuleEntity> paramFlowRule;
-	@Autowired
-	RuleRepository<AuthorityRuleEntity> authorityRule;
-	@Autowired
-	InMemoryRuleRepositoryAdapter<FlowRuleEntity> inMemoryRule;
+	private EurekaClientConfig eurekaClientConfig;
 	
 	@Autowired
-	InMemApiDefinitionStore inMemApiDefinition;
-	@Autowired
-	InMemGatewayFlowRuleStore inMemGatewayFlowRule;
+	private EurekaClient eurekaClient;
 	
-	@Bean
-	public SentinelApiClient getSentinelApiClient() {
-		return new SentinelApiClient();
+	@Autowired
+	private InstanceRegistryProperties instanceRegistryProperties;
+	
+	@Autowired(required = false)
+	private static ServiceGenerator generator;
+	
+	@Inject
+	WebServerAutoConfiguration (SecretProperties secretProperties) {
+		generator = new ServiceGenerator(secretProperties);
 	}
 	
 	@Bean
-	public SentinelServerContext iSentinelServerContext(PeerAwareInstanceRegistry registry, SentinelApiClient sentinelApi) {
-		return new SentinelServerImpl(registry, sentinelApi, metric, systemRule, degradeRule, paramFlowRule, authorityRule,
-				inMemoryRule, inMemApiDefinition, inMemGatewayFlowRule);
+	public HttpapiClient getHttpapiClient() {
+		return new HttpapiClient();
 	}
 	
+	@Bean
+	public ServerContext iServerContext(PeerAwareInstanceRegistry registry, HttpapiClient sentinelApi) {
+		return new ServerContextImpl(registry, generator, sentinelApi);
+	}
+	
+	@Override
+	public PeerAwareInstanceRegistry peerAwareInstanceRegistry(ServerCodecs serverCodecs) {
+		this.eurekaClient.getApplications(); // force initialization
+		return new ProvingInstanceRegistry(generator, this.eurekaServerConfig, this.eurekaClientConfig,
+				serverCodecs, this.eurekaClient,
+				this.instanceRegistryProperties.getExpectedNumberOfClientsSendingRenews(),
+				this.instanceRegistryProperties.getDefaultOpenForTrafficCount());
+	}
+
 //	@Bean
 //    public FilterRegistrationBean<Filter> sentinelFilterRegistration() {
 //        FilterRegistrationBean<Filter> registration = new FilterRegistrationBean<>();
@@ -70,4 +89,11 @@ public class WebServerAutoConfiguration {
 //
 //        return registration;
 //    }
+	
+	@PostConstruct
+	public void preprocess() {
+		if(generator != null) {
+			generator.init(); // force initialization
+		}
+	}
 }

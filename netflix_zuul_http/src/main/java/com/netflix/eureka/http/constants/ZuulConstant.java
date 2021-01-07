@@ -16,15 +16,15 @@ public class ZuulConstant {
     public static final String JWT_KEY_AGENT = "agent";
     
     /**
-     * Zuul use Sentinel as default context when serviceId is empty.
+     * Zuul use Security as default context when serviceId is empty.
      */
     public static final String ZUUL_DEFAULT_CONTEXT = "zuul_default_context";
 
     /**
-     * Zuul context key for keeping Sentinel entries.
+     * Zuul context key for keeping Security entries.
      *
      * @since 1.6.0
      */
-    public static final String ZUUL_CTX_SENTINEL_ENTRIES_KEY = "_sentinel_entries";
+    public static final String ZUUL_CTX_SENTINEL_ENTRIES_KEY = "_security_entries";
 
 }

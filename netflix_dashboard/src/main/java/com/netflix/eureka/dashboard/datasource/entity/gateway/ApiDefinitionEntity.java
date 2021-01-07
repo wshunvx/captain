@@ -1,16 +1,12 @@
 package com.netflix.eureka.dashboard.datasource.entity.gateway;
 
 import java.util.Date;
-import java.util.Objects;
 
 import com.alibaba.csp.sentinel.slots.block.Rule;
-import com.netflix.eureka.common.ApiDefinition;
-import com.netflix.eureka.common.ApiPathPredicateItem;
 import com.netflix.eureka.dashboard.datasource.entity.rule.RuleEntity;
 
-public class ApiDefinitionEntity implements RuleEntity {
+public class ApiDefinitionEntity extends RuleEntity {
 
-    private Long id;
     private String serviceId;
     
     private String app;
@@ -20,33 +16,13 @@ public class ApiDefinitionEntity implements RuleEntity {
     private Date gmtModified;
 
     private String apiName;
-    private ApiPredicateItemEntity predicateItems;
+    
+    private String url;
+    private String pattern;
 
-
-    public ApiDefinition toApiDefinition() {
-        ApiDefinition apiDefinition = new ApiDefinition();
-        apiDefinition.setApiName(apiName);
-        apiDefinition.setServiceId(serviceId);
-
-        if (predicateItems != null) {
-        	ApiPathPredicateItem apiPredicateItem = new ApiPathPredicateItem();
-            apiPredicateItem.setMatchStrategy(predicateItems.getMatchStrategy());
-            apiPredicateItem.setPattern(predicateItems.getPattern());
-            apiDefinition.setPredicateItems(apiPredicateItem);
-        }
-
-        return apiDefinition;
-    }
-
-    public ApiDefinitionEntity() {
-
-    }
-
-    public ApiDefinitionEntity(String apiName, ApiPredicateItemEntity predicateItems) {
-        this.apiName = apiName;
-        this.predicateItems = predicateItems;
-    }
-
+    private Integer matchStrategy;
+    private Integer stripPrefix;
+    
     public String getApiName() {
         return apiName;
     }
@@ -63,25 +39,39 @@ public class ApiDefinitionEntity implements RuleEntity {
 		this.serviceId = serviceId;
 	}
 
-	public ApiPredicateItemEntity getPredicateItems() {
-        return predicateItems;
-    }
+    public String getUrl() {
+		return url;
+	}
 
-    public void setPredicateItems(ApiPredicateItemEntity predicateItems) {
-        this.predicateItems = predicateItems;
-    }
+	public void setUrl(String url) {
+		this.url = url;
+	}
 
-    @Override
-    public Long getId() {
-        return id;
-    }
+	public String getPattern() {
+		return pattern;
+	}
 
-    @Override
-    public void setId(Long id) {
-        this.id = id;
-    }
+	public void setPattern(String pattern) {
+		this.pattern = pattern;
+	}
 
-    @Override
+	public Integer getMatchStrategy() {
+		return matchStrategy;
+	}
+
+	public void setMatchStrategy(Integer matchStrategy) {
+		this.matchStrategy = matchStrategy;
+	}
+
+	public Integer getStripPrefix() {
+		return stripPrefix;
+	}
+
+	public void setStripPrefix(Integer stripPrefix) {
+		this.stripPrefix = stripPrefix;
+	}
+
+	@Override
     public String getApp() {
         return app;
     }
@@ -99,7 +89,6 @@ public class ApiDefinitionEntity implements RuleEntity {
 		this.instanceId = instanceId;
 	}
 
-	@Override
     public Date getGmtCreate() {
         return gmtCreate;
     }
@@ -116,40 +105,20 @@ public class ApiDefinitionEntity implements RuleEntity {
         this.gmtModified = gmtModified;
     }
 
-    @Override
+	@Override
     public Rule toRule() {
         return null;
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) { return true; }
-        if (o == null || getClass() != o.getClass()) { return false; }
-        ApiDefinitionEntity entity = (ApiDefinitionEntity) o;
-        return Objects.equals(id, entity.id) &&
-        		Objects.equals(serviceId, entity.serviceId) &&
-                Objects.equals(app, entity.app) &&
-                Objects.equals(gmtCreate, entity.gmtCreate) &&
-                Objects.equals(gmtModified, entity.gmtModified) &&
-                Objects.equals(apiName, entity.apiName) &&
-                Objects.equals(predicateItems, entity.predicateItems);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(id, serviceId, app, gmtCreate, gmtModified, apiName, predicateItems);
-    }
-
-    @Override
     public String toString() {
         return "ApiDefinitionEntity{" +
-                "id=" + id +
+                "id=" + getId() +
                 ", serviceId='" + serviceId + '\'' +
                 ", app='" + app + '\'' +
                 ", gmtCreate=" + gmtCreate +
                 ", gmtModified=" + gmtModified +
                 ", apiName='" + apiName + '\'' +
-                ", predicateItems=" + predicateItems +
                 '}';
     }
 }

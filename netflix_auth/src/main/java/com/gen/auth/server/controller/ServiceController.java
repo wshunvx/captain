@@ -14,14 +14,15 @@ import org.springframework.web.bind.annotation.RestController;
 import com.gen.auth.server.entity.Client;
 import com.gen.auth.server.entity.Instance;
 import com.gen.auth.server.entity.Svrtype;
-import com.gen.auth.server.service.AuthClientService;
+import com.gen.auth.server.service.ClientService;
+import com.netflix.eureka.bean.ZClient;
 import com.netflix.eureka.command.CommandResponse;
 
 @RestController
 @RequestMapping("server")
 public class ServiceController {
     @Autowired
-    private AuthClientService service;
+    private ClientService service;
 
     @GetMapping(value = "/instance")
     public CommandResponse<List<Client>> getInstance(@RequestParam Map<String, Object> params) {
@@ -31,6 +32,11 @@ public class ServiceController {
     @PostMapping(value = "/instance")
     public CommandResponse<Client> setInstance(@RequestBody Client client) {
     	return service.setClientAll(client);
+    }
+    
+    @GetMapping(value = "/instance/findById")
+    public CommandResponse<ZClient> setInstance(@RequestParam(name="instance_id") String instanceId) {
+    	return service.getClient(instanceId);
     }
     
     @GetMapping(value = "/svrtype")

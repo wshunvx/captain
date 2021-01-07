@@ -2,17 +2,19 @@ package com.netflix.eureka.http.filters;
 
 import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.POST_TYPE;
 
+import java.io.ByteArrayInputStream;
 import java.net.SocketTimeoutException;
 
+import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletResponse;
 
 import org.springframework.cloud.netflix.zuul.util.ZuulRuntimeException;
-import org.springframework.http.HttpStatus;
 import org.springframework.util.ReflectionUtils;
 
 import com.alibaba.csp.sentinel.Entry;
 import com.alibaba.csp.sentinel.context.ContextUtil;
 import com.netflix.client.ClientException;
+import com.netflix.eureka.command.CommandResponse;
 import com.netflix.eureka.http.constants.ZuulConstant;
 import com.netflix.eureka.http.utils.EntryUtils;
 import com.netflix.zuul.ZuulFilter;
@@ -47,10 +49,11 @@ public class ZuulPostFilter extends ZuulFilter {
 				HttpServletResponse response = ctx.getResponse();
 				String message = findZuulExceptionMessage(exception);
 				if(message != null) {
-					response.getOutputStream().write(message.getBytes());
+					ctx.setResponseDataStream(new ByteArrayInputStream(message.getBytes()));
+					ServletOutputStream outStream = response.getOutputStream();
+					outStream.write(CommandResponse.ofFailure(500, message).toString().getBytes());
 				}
 	            response.setContentType("application/json; charset=utf-8");
-	            ctx.setResponseStatusCode(HttpStatus.FORBIDDEN.value());
 			}
 			
 	        if (ctx.containsKey(ZuulConstant.ZUUL_CTX_SENTINEL_ENTRIES_KEY)) {

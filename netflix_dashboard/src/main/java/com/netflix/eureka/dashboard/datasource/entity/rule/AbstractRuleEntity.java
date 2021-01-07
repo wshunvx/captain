@@ -4,9 +4,7 @@ import java.util.Date;
 
 import com.alibaba.csp.sentinel.slots.block.AbstractRule;
 
-public abstract class AbstractRuleEntity<T extends AbstractRule> implements RuleEntity {
-
-    protected Long id;
+public abstract class AbstractRuleEntity<T extends AbstractRule> extends RuleEntity {
 
     protected String app;
     protected String instanceId;
@@ -15,16 +13,6 @@ public abstract class AbstractRuleEntity<T extends AbstractRule> implements Rule
 
     private Date gmtCreate;
     private Date gmtModified;
-
-    @Override
-    public Long getId() {
-        return id;
-    }
-
-    @Override
-    public void setId(Long id) {
-        this.id = id;
-    }
 
     @Override
     public String getApp() {
@@ -55,7 +43,6 @@ public abstract class AbstractRuleEntity<T extends AbstractRule> implements Rule
         return this;
     }
 
-    @Override
     public Date getGmtCreate() {
         return gmtCreate;
     }
