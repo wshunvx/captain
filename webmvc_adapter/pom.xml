@@ -11,12 +11,6 @@
     <artifactId>webmvc_adapter</artifactId>
     <packaging>jar</packaging>
 
-    <properties>
-        <netty.version>4.1.31.Final</netty.version>
-        <alibaba.csp.version>1.8.0</alibaba.csp.version>
-        <spring-cloud.version>Hoxton.SR7</spring-cloud.version>
-    </properties>
-
     <dependencies>
     	<dependency>
             <groupId>org.springframework.boot</groupId>

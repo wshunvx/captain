@@ -11,14 +11,7 @@
     <artifactId>netflix_zuul_http</artifactId>
     <packaging>jar</packaging>
 
-    <properties>
-        <netty.version>4.1.31.Final</netty.version>
-        <alibaba.csp.version>1.8.0</alibaba.csp.version>
-        <spring-cloud.version>Hoxton.SR7</spring-cloud.version>
-    </properties>
-
     <dependencies>
-        
         <dependency>
 		    <groupId>org.springframework.cloud</groupId>
 		    <artifactId>spring-cloud-starter-netflix-zuul</artifactId>
@@ -26,31 +19,6 @@
 		<dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
-        </dependency>
-        <!-- dependency>
-	      <groupId>io.github.openfeign</groupId>
-	      <artifactId>feign-core</artifactId>
-	      <scope>compile</scope>
-	    </dependency>
-	    <dependency>
-	      <groupId>io.github.openfeign</groupId>
-	      <artifactId>feign-slf4j</artifactId>
-	      <scope>compile</scope>
-	    </dependency>
-	    <dependency>
-	      <groupId>io.github.openfeign</groupId>
-	      <artifactId>feign-hystrix</artifactId>
-	      <scope>compile</scope>
-	    </dependency-->
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-all</artifactId>
-            <version>${netty.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>4.5.3</version>
         </dependency>
         <dependency>
             <groupId>com.github.wshunvx</groupId>

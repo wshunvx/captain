@@ -1,10 +1,11 @@
 eureka:
   instance:
-    hostname: 10.10.10.104
-    instanceId: 1000100110000001
+    hostName: 127.0.0.1
+    instanceId: "1000100110000001"
     metadataMap:
-      zone: 001
-    appGroupName: gate
+      zone: "1"
+      secret: TcNUrWGBRg3NRlUpFtM5lwRTOAXw5q4G/tsD3I84l9mA+1iXoivsYFwfsmeZwCu97bnHmr0l3rCEVdI1mLxxkYTXfvdyDZ9EuG1r8n9bmO59PqIbHmB6C+4kDhZEy4FW8k/mraquIHc8hQHBEDOqpMyDCXtEHhvow+nvFq3+Vqw=
+    appGroupName: localhost
   client:
     zone: 001
     serviceUrl:

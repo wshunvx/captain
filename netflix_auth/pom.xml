@@ -12,7 +12,7 @@
 	
 	<properties>
 		<mysql.connector>8.0.22</mysql.connector>
-        <springcloud.netflix.hystrix>2.2.4.RELEASE</springcloud.netflix.hystrix>
+        <springcloud.netflix.hystrix>2.2.6.RELEASE</springcloud.netflix.hystrix>
     </properties>
     
     <dependencies>
