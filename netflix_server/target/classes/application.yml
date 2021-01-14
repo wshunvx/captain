@@ -1,0 +1,27 @@
+server:
+  port: 8761
+
+spring:
+  profiles:
+    active: pro
+  application:
+    name: cloud-found
+  security:
+    user:
+      name: wshunvx
+      password: QRVF68VKEV3B830V
+  cloud:
+    loadbalancer:
+      ribbon:
+        enabled: false
+
+
+logging:
+  level:
+    org:
+      springframework:
+        web: INFO
+  file: "${user.home}/logs/csp/netflix-server.log"
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
