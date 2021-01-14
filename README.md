@@ -19,7 +19,6 @@ Profiles: oss
 
 Parameter: gpg.passphrase=[password]
 
-```
-maven settings.xml 文件到wshun这来取
+## Documentation
 
-```
+See the [中文文档](https://github.com/wshunvx/captain/wiki) for document in Chinese.
